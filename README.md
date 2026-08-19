@@ -4,6 +4,12 @@
 
 목표는 워크숍 시작 전에 필요한 프로그램과 계정을 준비하고, 마지막에 `bun setup-common.ts` 검사를 통과하는 것입니다.
 
+## 바로 쓰는 명령어
+
+설명 없이 복사·붙여넣기할 명령어만 필요하면:
+
+- [Windows 복사·붙여넣기 명령어 모음](COPY_PASTE_COMMANDS_WINDOWS.md)
+
 ## 영상에서 따라갈 순서
 
 1. [계정과 구독 준비](checklists/01-accounts.md)
