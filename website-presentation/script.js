@@ -28,12 +28,17 @@
   const themeClasses = ['theme-luxury', 'theme-swiss', 'theme-playful', 'theme-cinematic'];
   const themeNames = ['EDITORIAL / LUXURY', 'SWISS / FUNCTIONAL', 'PLAYFUL / EXPRESSIVE', 'CINEMATIC / IMMERSIVE'];
   const devicePhases = ['DESKTOP', 'PHONE', 'PHONE SCROLL', 'TABLET', 'TABLET SCROLL'];
+  const smoothTrackTransition = 'transform 1050ms cubic-bezier(.12,.78,.18,1)';
+  const legacyTrackTransition = 'transform 420ms steps(5, end)';
+  const wheelCommitThreshold = 72;
+  const wheelPreviewRatio = 0.24;
 
   let slideIndex = 0;
   let styleIndex = 0;
   let devicePhase = 0;
   let transitionLocked = false;
   let wheelAccumulator = 0;
+  let wheelPreviewOffset = 0;
   let wheelSuppressed = false;
   let wheelIdleTimer = null;
   let lightOn = false;
@@ -48,12 +53,44 @@
     document.body.classList.toggle('legacy-mode', slideIndex === 4);
   }
 
-  function setTrackPosition(index, legacy = false) {
-    track.classList.toggle('legacy-step', legacy);
-    track.style.transform = `translate3d(0, ${index * -presentation.clientHeight}px, 0)`;
+  function trackBasePosition(index = slideIndex) {
+    return index * -presentation.clientHeight;
   }
 
-  function lockFor(ms = 780) {
+  function setTrackPosition(index, legacy = false, immediate = false) {
+    wheelPreviewOffset = 0;
+    track.style.transition = immediate || prefersReducedMotion
+      ? 'none'
+      : legacy
+        ? legacyTrackTransition
+        : smoothTrackTransition;
+    track.style.transform = `translate3d(0, ${trackBasePosition(index)}px, 0)`;
+  }
+
+  function canPreviewTrack(direction) {
+    if (prefersReducedMotion || transitionLocked || slideIndex === 1 || slideIndex === 2) return false;
+    const nextIndex = slideIndex + direction;
+    if (nextIndex < 0 || nextIndex >= slideCount) return false;
+    return slideIndex !== 4 && nextIndex !== 4;
+  }
+
+  function previewTrack(accumulatedDelta) {
+    const direction = accumulatedDelta > 0 ? 1 : -1;
+    if (!canPreviewTrack(direction)) return;
+
+    const progress = Math.min(Math.abs(accumulatedDelta) / wheelCommitThreshold, 1);
+    const easedProgress = 1 - ((1 - progress) * (1 - progress));
+    wheelPreviewOffset = -direction * presentation.clientHeight * wheelPreviewRatio * easedProgress;
+    track.style.transition = 'none';
+    track.style.transform = `translate3d(0, ${trackBasePosition() + wheelPreviewOffset}px, 0)`;
+  }
+
+  function settleTrackPreview() {
+    if (!wheelPreviewOffset) return;
+    setTrackPosition(slideIndex, false, false);
+  }
+
+  function lockFor(ms = 1080) {
     transitionLocked = true;
     window.setTimeout(() => {
       transitionLocked = false;
@@ -71,13 +108,18 @@
     if (nextIndex < 0 || nextIndex >= slideCount || nextIndex === slideIndex) return;
     const involvesLegacy = nextIndex === 4 || slideIndex === 4;
     if (involvesLegacy) flashLegacy();
+
+    if (wheelPreviewOffset && !involvesLegacy && !prefersReducedMotion) {
+      void track.offsetHeight;
+    }
+
     slideIndex = nextIndex;
     if (slideIndex !== 1) styleIndex = slideIndex < 1 ? 0 : styleIndex;
     if (slideIndex !== 2 && nextIndex !== 2) deviceContent.scrollTop = 0;
     setTrackPosition(slideIndex, involvesLegacy);
     updateFrame();
     openingHint.classList.add('used');
-    lockFor(involvesLegacy ? 520 : 820);
+    lockFor(involvesLegacy ? 520 : 1080);
   }
 
   function setStyle(index) {
@@ -87,7 +129,7 @@
     productDemo.classList.add(themeClasses[styleIndex]);
     styleName.textContent = themeNames[styleIndex];
     styleCount.textContent = `STYLE ${String(styleIndex + 1).padStart(2, '0')} / 04`;
-    lockFor(760);
+    lockFor(820);
   }
 
   function setDevicePhase(nextPhase) {
@@ -106,7 +148,7 @@
       deviceShell.classList.add('device-tablet');
       deviceContent.scrollTo({ top: devicePhase === 4 ? deviceContent.scrollHeight * 0.4 : 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
     }
-    lockFor(900);
+    lockFor(980);
   }
 
   function navigate(direction) {
@@ -134,6 +176,7 @@
     wheelIdleTimer = window.setTimeout(() => {
       wheelSuppressed = false;
       wheelAccumulator = 0;
+      if (!transitionLocked) settleTrackPreview();
     }, 180);
   }
 
@@ -143,15 +186,25 @@
       releaseWheelWhenIdle();
       return;
     }
-    if (Math.sign(event.deltaY) !== Math.sign(wheelAccumulator) && wheelAccumulator !== 0) wheelAccumulator = 0;
+
+    if (Math.sign(event.deltaY) !== Math.sign(wheelAccumulator) && wheelAccumulator !== 0) {
+      wheelAccumulator = 0;
+      settleTrackPreview();
+    }
+
     wheelAccumulator += event.deltaY;
-    if (Math.abs(wheelAccumulator) >= 68) {
+    previewTrack(wheelAccumulator);
+
+    if (Math.abs(wheelAccumulator) >= wheelCommitThreshold) {
       const direction = wheelAccumulator > 0 ? 1 : -1;
       wheelAccumulator = 0;
       wheelSuppressed = true;
       navigate(direction);
       releaseWheelWhenIdle();
+      return;
     }
+
+    releaseWheelWhenIdle();
   }, { passive: false });
 
   document.addEventListener('keydown', (event) => {
@@ -182,7 +235,7 @@
     deviceShell.classList.add('device-desktop');
     deviceContent.scrollTop = 0;
     slideIndex = 0;
-    setTrackPosition(0, false);
+    setTrackPosition(0, false, true);
     openingHint.classList.remove('used');
     updateFrame();
   });
@@ -232,8 +285,8 @@
     });
   });
 
-  window.addEventListener('resize', () => setTrackPosition(slideIndex, false));
+  window.addEventListener('resize', () => setTrackPosition(slideIndex, false, true));
 
-  setTrackPosition(0, false);
+  setTrackPosition(0, false, true);
   updateFrame();
 })();
