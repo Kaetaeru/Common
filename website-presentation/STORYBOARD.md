@@ -9,6 +9,8 @@
 - Slide 01 navigation tutorial: LOCKED at concept level.
 - Presentation shell theme: LOCKED at concept level.
 - Presentation navigation / transition system: LOCKED at concept level.
+- Default smooth vertical continuity: LOCKED at concept level.
+- Slide 05 — Retro / Legacy Web: intentional transition-break exception.
 
 ## Product definition
 
@@ -100,6 +102,27 @@ Requirements:
 - While the transition is playing, further navigation input is temporarily ignored or queued as a single next intent.
 - Upward and downward gestures must produce directionally consistent motion.
 
+### Default vertical continuity — LOCKED
+
+Except for the Retro / Legacy Web interlude, the entire presentation should feel like one smooth vertical journey through a stack of full-screen exhibits.
+
+The viewer's mental model should be:
+
+> 아래로 내려가면서 다음 작품을 본다.
+
+This does not mean native document scrolling. It means each committed navigation gesture moves exactly one full-screen scene while preserving a continuous vertical spatial relationship between adjacent slides.
+
+For forward navigation:
+
+- the current slide travels upward out of the stage,
+- the next slide rises smoothly from below,
+- the movement visually suggests that the viewer has descended to the next exhibit,
+- no blank gap or hard cut should appear between normal slides.
+
+For backward navigation, the motion reverses naturally.
+
+Adjacent normal slides should feel physically connected even when their visual themes differ radically.
+
 ### Transition character
 
 The deck moves primarily on a vertical axis because the main physical input is the mouse wheel.
@@ -119,11 +142,37 @@ Previous-slide transition mirrors the same logic in reverse.
 ### Motion quality
 
 - Use controlled easing with a strong start and soft landing rather than a generic `ease-in-out` feel.
+- Normal slides should preserve smooth vertical continuity.
 - Avoid identical fade-only transitions.
 - Avoid large 3D flips, carousel gimmicks, or motion that competes with the demonstrations.
 - A small amount of overlap between outgoing and incoming canvases is preferred so the transition feels continuous.
 - Slide-specific transitions are allowed when they reinforce that slide's concept, but they must still obey the same navigation state model.
 - Reduced-motion users receive a short crossfade / minimal translation instead of full movement.
+
+### Retro / Legacy transition exception — LOCKED
+
+Slide 05 intentionally breaks the otherwise smooth vertical motion language.
+
+This exception should be noticeable because it is part of the joke and part of the proof of stylistic range.
+
+When entering Slide 05:
+
+1. The normal smooth descent begins or appears about to begin.
+2. The motion is interrupted by an intentionally old-fashioned transition treatment.
+3. The presentation shell temporarily adopts legacy visual conventions together with the demo.
+4. Navigation remains functionally identical even though its appearance changes.
+
+Possible treatment examples to evaluate later:
+
+- abrupt browser-like redraw,
+- old page-load flash,
+- crude wipe,
+- stepped rather than continuously eased movement,
+- brief system-grey frame before the legacy page appears.
+
+The final choice should feel deliberately dated, not actually broken or slow.
+
+When leaving Slide 05 for Slide 06, the modern exhibition system should visibly recover and the smooth vertical continuity resumes. That recovery is itself part of the contrast.
 
 ### Transition state model
 
