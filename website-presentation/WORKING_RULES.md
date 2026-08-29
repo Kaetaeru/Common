@@ -4,6 +4,20 @@ Status: ACTIVE
 
 This file defines how design decisions are handled while the interactive portfolio storyboard is being developed.
 
+## Latest reset directive — transition first
+
+The current implementation is a clean rebuild. Previous implementation mechanics are not a foundation and should not be preserved for compatibility.
+
+When an older planning note conflicts with the rules below, these rules take precedence for implementation:
+
+1. Transition quality is the highest-priority interaction requirement.
+2. Scrolling must produce visible continuous intermediate frames; the experience must not feel like `input -> state swap -> animation after the fact`.
+3. A real continuous scroll / sticky scrollytelling architecture is allowed when it produces the intended presentation feel, even if an older note assumed discrete slide navigation.
+4. Slide 02 theme changes and Slide 03 device changes should be driven by scroll progress wherever practical rather than by abrupt class swaps.
+5. The Retro / Legacy scene remains the intentional exception where motion may become stepped or dated.
+6. Anti-template / anti-AI-default guidance is secondary. Do not distort a good design merely to avoid patterns associated with generated websites.
+7. Keep the existing storyboard goals, slide order, shared VELLUM / ARC 01 content, responsive choreography, and legacy contrast unless the user explicitly changes them.
+
 ## Decision boundary
 
 Discuss and lock together only decisions that materially change the experience, structure, message, or proof of capability.
@@ -37,7 +51,7 @@ Examples:
 - responsive spacing adjustments,
 - exact visual treatment inside an already-approved theme.
 
-These details should still obey the locked storyboard, anti-template rules, accessibility requirements, and the overall Interactive Design Exhibition concept.
+These details should obey accessibility requirements and the overall Interactive Design Exhibition concept. Anti-template guidance may inform choices but is not a hard visual prohibition.
 
 ## Review model
 
@@ -51,7 +65,8 @@ If a small-looking decision would materially alter the established experience or
 
 For Slide 02 and later slides:
 
-- lock the concept and interaction choreography,
+- preserve the approved concept and interaction choreography,
+- make transition behavior observable during the user's scroll itself,
 - choose detailed composition autonomously,
-- build a complete coherent version,
+- build a coherent working version,
 - then review visually and iterate.
