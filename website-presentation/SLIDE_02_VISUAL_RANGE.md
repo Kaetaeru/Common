@@ -1,8 +1,8 @@
 # Slide 02 — Visual Design / Same Content, Different Worlds
 
-Status: LOCKED at concept + shared-content level. Exact visual execution remains for implementation.
+Status: LOCKED at concept + shared-content level. Concrete image-led execution is defined in `ARC01_WEB_DESIGN.md`.
 
-`STORYBOARD.md` remains the master presentation plan. Shared product content is defined in `SHARED_PRODUCT_BRIEF.md`.
+`STORYBOARD.md` remains the master presentation plan. Shared product content is defined in `SHARED_PRODUCT_BRIEF.md`. The approved ARC 01 master photograph and its four concrete page compositions are defined in `ARC01_WEB_DESIGN.md`.
 
 ## Purpose
 
@@ -45,6 +45,8 @@ Core invariant content:
 
 Theme changes may alter presentation, position, crop, emphasis, and interaction treatment, but not the actual brief or meaning.
 
+The approved master photograph is the continuity anchor across all four styles. Do not generate or substitute a different lamp image per style.
+
 ## Internal progress
 
 Slide 02 remains `02 / 08` throughout.
@@ -82,6 +84,8 @@ Message proved:
 
 This is the first actual portfolio work the viewer sees and must feel unusually polished.
 
+Exact image placement, crop, typography, and transition treatment are defined in `ARC01_WEB_DESIGN.md`.
+
 ## Style 02 — Swiss / Functional
 
 Character:
@@ -103,6 +107,8 @@ Message proved:
 > 같은 내용을 훨씬 명확하고 구조적인 방향으로 만들 수도 있다.
 
 The transition from Style 01 must visibly tighten and reorganize the existing elements.
+
+Exact image placement, crop, typography, and transition treatment are defined in `ARC01_WEB_DESIGN.md`.
 
 ## Style 03 — Playful / Expressive
 
@@ -128,6 +134,8 @@ Message proved:
 
 Avoid generic pastel SaaS styling.
 
+Exact image placement, crop, typography, and transition treatment are defined in `ARC01_WEB_DESIGN.md`.
+
 ## Style 04 — Cinematic / Immersive
 
 Character:
@@ -141,14 +149,16 @@ What changes:
 
 - the same ARC 01 becomes the primary environmental light source
 - product copy moves into a quieter layered composition
-- the interior image / scene can dominate the viewport
+- the approved interior photograph dominates the viewport
 - no neon SaaS glow, cards, or fake-tech language
 
 Message proved:
 
 > 같은 정보도 화면 전체를 경험처럼 사용하는 방향으로 만들 수 있다.
 
-This final state must prepare the handoff into Slide 03.
+This final state is also the desktop starting state for Slide 03. It must not be replaced by a new visual when the responsive demonstration begins.
+
+Exact image placement, crop, typography, and transition treatment are defined in `ARC01_WEB_DESIGN.md`.
 
 ## Transformation choreography
 
@@ -160,19 +170,19 @@ For each style change:
 2. existing elements travel toward their next positions,
 3. layout geometry changes,
 4. typography system changes,
-5. image crop / scale changes while ARC 01 stays recognizable,
+5. the same approved master photograph changes crop / scale while ARC 01 stays recognizable,
 6. CTA and navigation restyle,
 7. the new design settles into a stable state.
 
 Do not solve this as four crossfading full-screen screenshots.
 
-The viewer should be able to track the same content through the morph.
+The viewer should be able to track the same content and the same photograph through the morph.
 
 ## Scroll feel
 
-Small wheel motion may hint at the upcoming theme. A committed gesture completes one transformation.
+The four theme states are authored checkpoints. A committed gesture completes one transformation and lands on the next stable design state.
 
-Do not require precise scrub control. The deck still resolves into four stable style states.
+Do not require precise scrub control between theme states.
 
 ## Transition in from Slide 01
 
@@ -190,11 +200,13 @@ The outer caption becomes:
 
 Style 04 does not disappear.
 
-The same VELLUM / ARC 01 product page becomes more explicitly viewport-bound and continues into Slide 03.
+The same VELLUM / ARC 01 full-bleed photographic page becomes more explicitly viewport-bound and continues into Slide 03.
 
 Slide 03 then demonstrates the same site as:
 
 `desktop -> phone -> live phone scroll -> tablet -> live tablet scroll`
+
+The device transformations are authored checkpoints, while phone and tablet internal page scrolling remain continuous.
 
 This continuity is important:
 
@@ -207,7 +219,7 @@ Slide 02 succeeds if the viewer can clearly tell that:
 1. the product, copy, price, and information are the same,
 2. every style has materially different typography and layout logic,
 3. the differences go beyond color swaps,
-4. the same ARC 01 object remains recognizable throughout,
+4. the same ARC 01 photograph remains recognizable throughout,
 5. the transformation itself feels authored,
 6. Style 04 can continue naturally into the responsive demo.
 
@@ -219,6 +231,7 @@ Rework if:
 - every state secretly uses the same card layout,
 - content changes between styles to make a design easier,
 - the lamp itself changes identity between themes,
+- the approved master photo is replaced by unrelated product imagery,
 - the sequence feels like a template carousel,
 - one theme is intentionally weaker than the others,
 - the sequence takes so many gestures that Slide 02 feels endless,
