@@ -1,10 +1,11 @@
 (() => {
   const chapters = [...document.querySelectorAll('.chapter')];
   const legacyChapter = document.getElementById('legacy');
+  const responsiveChapter = document.getElementById('responsive');
   const prevButton = document.getElementById('prevButton');
   const nextButton = document.getElementById('nextButton');
   const restartButton = document.getElementById('restartButton');
-  if (!chapters.length || !legacyChapter) return;
+  if (!chapters.length || !legacyChapter || !responsiveChapter) return;
 
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -12,11 +13,17 @@
   const gestureIdleMs = 180;
 
   let checkpoints = [];
+  let freeZones = [];
   let animating = false;
   let animationFrame = 0;
+  let freeFrame = 0;
+  let freeCurrentY = window.scrollY;
+  let freeTargetY = window.scrollY;
+  let freeLastTime = 0;
   let wheelAccumulator = 0;
   let wheelDirection = 0;
   let gestureConsumed = false;
+  let freeGestureActive = false;
   let gestureResetTimer = 0;
 
   function chapterY(chapter, progress = 0) {
@@ -42,10 +49,9 @@
 
     addCheckpoint(list, 'responsive', 0, 'responsive-desktop');
     addCheckpoint(list, 'responsive', 0.22, 'responsive-phone');
-    addCheckpoint(list, 'responsive', 0.42, 'responsive-phone-scroll');
+    addCheckpoint(list, 'responsive', 0.42, 'responsive-phone-end');
     addCheckpoint(list, 'responsive', 0.68, 'responsive-tablet');
-    addCheckpoint(list, 'responsive', 0.9, 'responsive-tablet-scroll');
-    addCheckpoint(list, 'responsive', 1, 'responsive-complete');
+    addCheckpoint(list, 'responsive', 0.9, 'responsive-tablet-end');
 
     addCheckpoint(list, 'interaction', 0, 'interaction');
     addCheckpoint(list, 'legacy', 0, 'legacy');
@@ -58,6 +64,23 @@
       .map((checkpoint) => ({ ...checkpoint, y: clamp(checkpoint.y, 0, maxScroll) }))
       .sort((a, b) => a.y - b.y)
       .filter((checkpoint, index, all) => index === 0 || Math.abs(checkpoint.y - all[index - 1].y) > 2);
+
+    freeZones = [
+      {
+        name: 'phone-live-scroll',
+        start: chapterY(responsiveChapter, 0.22),
+        end: chapterY(responsiveChapter, 0.42)
+      },
+      {
+        name: 'tablet-live-scroll',
+        start: chapterY(responsiveChapter, 0.68),
+        end: chapterY(responsiveChapter, 0.9)
+      }
+    ].map((zone) => ({
+      ...zone,
+      start: clamp(zone.start, 0, maxScroll),
+      end: clamp(zone.end, 0, maxScroll)
+    }));
   }
 
   function legacyBounds() {
@@ -69,6 +92,14 @@
   function insideLegacy(y) {
     const { start, end } = legacyBounds();
     return y >= start - 2 && y <= end + 2;
+  }
+
+  function freeZoneFor(y, direction) {
+    return freeZones.find((zone) => {
+      if (y < zone.start - 3 || y > zone.end + 3) return false;
+      if (direction > 0) return y < zone.end - 2;
+      return y > zone.start + 2;
+    }) || null;
   }
 
   function nextCheckpointIndex(direction, y = window.scrollY) {
@@ -85,10 +116,23 @@
     return 0;
   }
 
-  function stopAnimation() {
+  function stopCheckpointAnimation() {
     if (animationFrame) cancelAnimationFrame(animationFrame);
     animationFrame = 0;
     animating = false;
+  }
+
+  function stopFreeAnimation() {
+    if (freeFrame) cancelAnimationFrame(freeFrame);
+    freeFrame = 0;
+    freeLastTime = 0;
+    freeCurrentY = window.scrollY;
+    freeTargetY = window.scrollY;
+  }
+
+  function stopAllAnimation() {
+    stopCheckpointAnimation();
+    stopFreeAnimation();
   }
 
   function smoothEase(t) {
@@ -102,7 +146,7 @@
   }
 
   function animateTo(targetY, mode = 'smooth') {
-    stopAnimation();
+    stopAllAnimation();
 
     const startY = window.scrollY;
     const distance = Math.abs(targetY - startY);
@@ -139,6 +183,36 @@
     animationFrame = requestAnimationFrame(tick);
   }
 
+  function animateFree(now) {
+    const dt = freeLastTime ? Math.min((now - freeLastTime) / 1000, 0.05) : 1 / 60;
+    freeLastTime = now;
+    const distance = freeTargetY - freeCurrentY;
+    const follow = reducedMotion ? 1 : 1 - Math.exp(-10 * dt);
+    freeCurrentY += distance * follow;
+
+    if (Math.abs(distance) < 0.4) freeCurrentY = freeTargetY;
+    window.scrollTo(0, freeCurrentY);
+
+    if (freeCurrentY !== freeTargetY) {
+      freeFrame = requestAnimationFrame(animateFree);
+      return;
+    }
+
+    freeFrame = 0;
+    freeLastTime = 0;
+  }
+
+  function scrollWithinFreeZone(delta, zone) {
+    stopCheckpointAnimation();
+    if (!freeFrame) {
+      freeCurrentY = window.scrollY;
+      freeTargetY = window.scrollY;
+    }
+
+    freeTargetY = clamp(freeTargetY + delta, zone.start, zone.end);
+    if (!freeFrame) freeFrame = requestAnimationFrame(animateFree);
+  }
+
   function go(direction) {
     rebuildCheckpoints();
     const fromY = window.scrollY;
@@ -152,12 +226,24 @@
     animateTo(target.y, mode);
   }
 
+  function navigate(direction, freeAmount = window.innerHeight * 0.13) {
+    rebuildCheckpoints();
+    const zone = freeZoneFor(window.scrollY, direction);
+    if (zone) {
+      freeGestureActive = true;
+      scrollWithinFreeZone(freeAmount * direction, zone);
+      return;
+    }
+    go(direction);
+  }
+
   function resetGestureSoon() {
     window.clearTimeout(gestureResetTimer);
     gestureResetTimer = window.setTimeout(() => {
       wheelAccumulator = 0;
       wheelDirection = 0;
       gestureConsumed = false;
+      freeGestureActive = false;
     }, gestureIdleMs);
   }
 
@@ -175,11 +261,23 @@
     if (!delta) return;
 
     const direction = delta > 0 ? 1 : -1;
-    if (wheelDirection && wheelDirection !== direction) wheelAccumulator = 0;
+    if (wheelDirection && wheelDirection !== direction) {
+      wheelAccumulator = 0;
+      freeGestureActive = false;
+    }
     wheelDirection = direction;
-
     resetGestureSoon();
-    if (gestureConsumed || animating) return;
+
+    rebuildCheckpoints();
+    const zone = freeZoneFor(window.scrollY, direction);
+    if (zone) {
+      freeGestureActive = true;
+      const amount = clamp(delta * 1.7, -120, 120);
+      scrollWithinFreeZone(amount, zone);
+      return;
+    }
+
+    if (freeGestureActive || gestureConsumed || animating) return;
 
     wheelAccumulator += delta;
     if (Math.abs(wheelAccumulator) < wheelThreshold) return;
@@ -206,7 +304,7 @@
         return;
       }
 
-      go(button === nextButton ? 1 : -1);
+      navigate(button === nextButton ? 1 : -1, window.innerHeight * 0.16);
     }
   }, true);
 
@@ -218,27 +316,34 @@
     if (['ArrowDown', 'ArrowRight', 'PageDown'].includes(event.key)) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      go(1);
+      navigate(1, window.innerHeight * 0.16);
     } else if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(event.key)) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      go(-1);
+      navigate(-1, window.innerHeight * 0.16);
     }
   }, true);
 
+  window.addEventListener('scroll', () => {
+    if (!freeFrame && !animationFrame) {
+      freeCurrentY = window.scrollY;
+      freeTargetY = window.scrollY;
+    }
+  }, { passive: true });
+
   window.addEventListener('resize', () => {
-    stopAnimation();
+    stopAllAnimation();
     rebuildCheckpoints();
   });
 
   window.addEventListener('mousedown', (event) => {
-    if (event.button === 1) stopAnimation();
+    if (event.button === 1) stopAllAnimation();
   }, { capture: true });
 
   rebuildCheckpoints();
   window.checkpointScroll = {
-    next: () => go(1),
-    previous: () => go(-1),
+    next: () => navigate(1),
+    previous: () => navigate(-1),
     rebuild: rebuildCheckpoints
   };
 })();
