@@ -6,19 +6,11 @@
   <meta name="color-scheme" content="light dark">
   <title>KAETARU / WEB — Interactive Presentation</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="arc01-image.css">
+  <link rel="stylesheet" href="arc01-layout.css">
 </head>
 <body>
   <a class="skip-link" href="#intro">본문으로 이동</a>
-
-  <svg class="sprite" aria-hidden="true" width="0" height="0">
-    <symbol id="arc-lamp" viewBox="0 0 520 720">
-      <ellipse cx="270" cy="675" rx="145" ry="18" class="lamp-shadow"/>
-      <ellipse cx="210" cy="650" rx="62" ry="18" class="lamp-base"/>
-      <path d="M210 642 C212 505 232 310 340 166 C383 108 430 88 474 94" class="lamp-body"/>
-      <path d="M338 170 C382 112 430 92 474 98" class="lamp-glow"/>
-      <path d="M342 170 C385 116 432 99 473 103" class="lamp-light"/>
-    </symbol>
-  </svg>
 
   <header class="chrome" id="chrome" aria-label="프레젠테이션 탐색">
     <div class="chrome-top">
@@ -57,37 +49,40 @@
           <strong>내용은 그대로.<br>인상은 전혀 다르게.</strong>
         </div>
 
-        <article class="product-demo" id="productDemo" data-theme="0">
-          <div class="product-grid" aria-hidden="true"></div>
-          <nav class="product-nav" aria-label="VELLUM 예시 탐색">
+        <article class="arc-demo" id="productDemo" data-theme="0">
+          <div class="arc-photo-backdrop" aria-hidden="true"></div>
+          <div class="arc-photo-wrap" aria-hidden="true">
+            <div class="arc-photo arc-photo-cover"></div>
+            <div class="arc-photo arc-photo-contain"></div>
+          </div>
+          <div class="arc-photo-shade" aria-hidden="true"></div>
+          <div class="arc-grid" aria-hidden="true"></div>
+
+          <nav class="arc-nav" aria-label="VELLUM 예시 탐색">
             <b>VELLUM</b>
             <div><span>Objects</span><span>Journal</span><span>About</span><span>Cart 0</span></div>
           </nav>
 
-          <div class="product-copy" id="productCopy">
+          <div class="arc-copy" id="productCopy">
             <p>OBJECTS / LIGHTING</p>
             <h2>ARC 01</h2>
             <h3>빛을 낮게,<br>공간을 깊게.</h3>
-            <p class="product-description">ARC 01은 얇은 알루미늄 아치와 부드러운 간접광을 결합한 플로어 램프입니다. 눈부심을 줄이고, 필요한 곳에만 따뜻한 빛을 남깁니다.</p>
+            <p class="arc-description">ARC 01은 얇은 알루미늄 아치와 부드러운 간접광을 결합한 플로어 램프입니다. 눈부심을 줄이고, 필요한 곳에만 따뜻한 빛을 남깁니다.</p>
           </div>
 
-          <div class="lamp-art" id="productLamp" aria-hidden="true">
-            <svg viewBox="0 0 520 720"><use href="#arc-lamp"></use></svg>
-          </div>
-
-          <div class="product-buy" id="productBuy">
+          <div class="arc-buy" id="productBuy">
             <strong>₩348,000</strong>
             <div><button type="button">제품 보기</button><button type="button" class="ghost">빛 켜보기</button></div>
           </div>
 
-          <dl class="product-facts" id="productFacts">
+          <dl class="arc-facts" id="productFacts">
             <div><dt>Material</dt><dd>Anodized aluminium</dd></div>
             <div><dt>Light</dt><dd>2700K warm white</dd></div>
             <div><dt>Height</dt><dd>1450 mm</dd></div>
             <div><dt>Dimming</dt><dd>10–100%</dd></div>
           </dl>
 
-          <div class="style-readout"><span id="styleName">EDITORIAL / LUXURY</span><b id="styleCount">STYLE 01 / 04</b></div>
+          <div class="arc-style-readout"><span id="styleName">EDITORIAL / LUXURY</span><b id="styleCount">STYLE 01 / 04</b></div>
         </article>
       </div>
     </section>
@@ -100,25 +95,26 @@
           <span id="devicePhaseLabel">DESKTOP → PHONE</span>
         </div>
 
-        <div class="device-area">
-          <div class="device-shadow" id="deviceShadow"></div>
-          <div class="device-shell" id="deviceShell">
-            <div class="device-camera" id="deviceCamera"></div>
-            <div class="device-viewport" id="deviceViewport">
-              <div class="device-site">
-                <nav class="device-nav"><b>VELLUM</b><span>Objects</span><span>Journal</span><span>About</span><span>Cart 0</span></nav>
-                <section class="device-hero">
-                  <div class="device-copy">
+        <div class="arc-device-area">
+          <div class="arc-device-shadow" id="deviceShadow"></div>
+          <div class="arc-device-shell" id="deviceShell">
+            <div class="arc-device-camera" id="deviceCamera"></div>
+            <div class="arc-device-viewport" id="deviceViewport">
+              <div class="arc-device-site">
+                <nav class="arc-device-nav"><b>VELLUM</b><span>Objects</span><span>Journal</span><span>About</span><span>Cart 0</span></nav>
+                <section class="arc-device-hero">
+                  <div class="arc-device-photo" aria-hidden="true"></div>
+                  <div class="arc-device-veil" aria-hidden="true"></div>
+                  <div class="arc-device-copy">
                     <small>OBJECTS / LIGHTING</small>
                     <h3>ARC 01</h3>
                     <h4>빛을 낮게,<br>공간을 깊게.</h4>
-                    <p>ARC 01은 얇은 알루미늄 아치와 부드러운 간접광을 결합한 플로어 램프입니다.</p>
+                    <p>ARC 01은 얇은 알루미늄 아치와 부드러운 간접광을 결합한 플로어 램프입니다. 눈부심을 줄이고, 필요한 곳에만 따뜻한 빛을 남깁니다.</p>
                     <strong>₩348,000</strong>
-                    <button type="button">제품 보기</button>
+                    <div><button type="button">제품 보기</button><button type="button" class="ghost">빛 켜보기</button></div>
                   </div>
-                  <div class="device-lamp" aria-hidden="true"><svg viewBox="0 0 520 720"><use href="#arc-lamp"></use></svg></div>
                 </section>
-                <section class="device-detail">
+                <section class="arc-device-detail">
                   <p>빛은 물건을 비추는 대신<br>공간의 깊이를 남깁니다.</p>
                   <dl>
                     <div><dt>Material</dt><dd>Anodized aluminium</dd></div>
@@ -128,6 +124,10 @@
                     <div><dt>Colors</dt><dd>Warm Silver / Graphite</dd></div>
                     <div><dt>Power</dt><dd>12 W LED</dd></div>
                   </dl>
+                </section>
+                <section class="arc-device-story">
+                  <div class="arc-device-story-photo" aria-hidden="true"></div>
+                  <p>2700K의 따뜻한 빛이 벽과 바닥에 낮게 머물도록 설계했습니다.</p>
                 </section>
               </div>
             </div>
@@ -153,7 +153,7 @@
             <h2>★ WELCOME TO VELLUM LIGHTING ★</h2>
             <p><b><u>ARC 01 FLOOR LIGHT — NOW AVAILABLE!</u></b></p>
             <p class="blink">Best viewed at 800 × 600 resolution</p>
-            <table><tr><td><b>ARC 01</b><br><br>빛을 낮게, 공간을 깊게.<br><br>Price: ₩348,000<br><br><button type="button">CLICK HERE FOR PRODUCT INFO</button></td><td class="legacy-lamp"><svg viewBox="0 0 520 720"><use href="#arc-lamp"></use></svg></td></tr></table>
+            <table><tr><td><b>ARC 01</b><br><br>빛을 낮게, 공간을 깊게.<br><br>Price: ₩348,000<br><br><button type="button">CLICK HERE FOR PRODUCT INFO</button></td><td><div class="legacy-photo" aria-hidden="true"></div></td></tr></table>
             <p>Visitor #001337 · Last updated: 1999/08/29</p>
           </div>
         </div>
@@ -184,6 +184,6 @@
   </main>
 
   <script src="smooth-scroll.js"></script>
-  <script src="script.js"></script>
+  <script src="arc01-render.js"></script>
 </body>
 </html>
