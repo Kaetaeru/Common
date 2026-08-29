@@ -1,14 +1,12 @@
 # Slide 02 — Visual Design / Same Content, Different Worlds
 
-Status: concept direction locked; exact fictional brand content and final art direction references are not yet locked.
+Status: LOCKED at concept + shared-content level. Exact visual execution remains for implementation.
 
-`STORYBOARD.md` remains the master presentation plan. This note defines the Slide 02 interaction and visual-range choreography before it is folded into the master storyboard.
+`STORYBOARD.md` remains the master presentation plan. Shared product content is defined in `SHARED_PRODUCT_BRIEF.md`.
 
 ## Purpose
 
 Prove visual-design range without changing the underlying brief or content.
-
-The viewer should see the exact same website content transformed into several clearly different contemporary design languages.
 
 Viewer takeaway:
 
@@ -16,7 +14,7 @@ Viewer takeaway:
 
 The point is not to show four templates. The point is to show one brief being interpreted four different ways.
 
-## Portfolio-level message
+## Outer presentation copy
 
 Recommended outer caption:
 
@@ -26,234 +24,202 @@ Optional supporting line:
 
 > 같은 정보도 타이포그래피, 레이아웃, 색, 이미지 처리와 움직임에 따라 완전히 다른 브랜드가 됩니다.
 
-This explanatory copy belongs to the persistent exhibition frame, not inside the fictional demo website.
+This copy belongs to the persistent exhibition frame, not inside the fictional product site.
 
-## Same-content invariant
+## Shared content — LOCKED
 
-All style states must preserve the same underlying content and information hierarchy.
+Slide 02 uses the fictional `VELLUM / ARC 01` floor-light product defined in `SHARED_PRODUCT_BRIEF.md`.
 
-The demo should reuse the same conceptual content nodes:
+Core invariant content:
 
-- brand / project name
-- primary headline
-- supporting description
-- one primary CTA
-- one secondary action or navigation item
-- one hero visual / product object
-- a small set of supporting facts or metadata
+- Brand: `VELLUM`
+- Product: `ARC 01`
+- Type: `Floor Light`
+- Headline: `빛을 낮게, 공간을 깊게.`
+- Description: `ARC 01은 얇은 알루미늄 아치와 부드러운 간접광을 결합한 플로어 램프입니다. 눈부심을 줄이고, 필요한 곳에만 따뜻한 빛을 남깁니다.`
+- Price: `₩348,000`
+- Primary CTA: `제품 보기`
+- Secondary action: `빛 켜보기`
+- Same lamp object / imagery
+- Same product facts when metadata is displayed
 
-The words and meaning do not change between styles.
+Theme changes may alter presentation, position, crop, emphasis, and interaction treatment, but not the actual brief or meaning.
 
-Invariant:
+## Internal progress
 
-> Theme changes may alter presentation, but not the actual brief, message, or available information.
+Slide 02 remains `02 / 08` throughout.
 
-This is what makes the comparison credible.
+A smaller local indicator shows:
 
-## Recommended number of styles
+- `STYLE 01 / 04`
+- `STYLE 02 / 04`
+- `STYLE 03 / 04`
+- `STYLE 04 / 04`
 
-Use four style states.
+One deliberate downward navigation intent advances at most one style. Upward navigation reverses one style. Only after Style 04 has settled does the next downward intent advance to Slide 03.
 
-Four is enough to establish range while keeping the internal sequence short enough that Slide 02 does not consume the whole presentation.
-
-Persistent deck metadata stays `02 / 08` throughout this sequence.
-
-A smaller local indicator may show:
-
-`STYLE 01 / 04`
-
-through
-
-`STYLE 04 / 04`.
-
-## Proposed contemporary style sequence
-
-The sequence should move through clearly distinct worlds. Do not use the Retro / Legacy language here because Slide 05 owns that contrast.
-
-### Style 01 — Editorial / Luxury
+## Style 01 — Editorial / Luxury
 
 Character:
 
-- warm or neutral light surface
+- warm / neutral light surface
 - serif-led typography
 - large negative space
 - asymmetric editorial composition
 - restrained controls
-- large visual treated like art direction rather than a product card
+- lamp presented like an art object rather than a commerce card
+
+What changes:
+
+- ARC 01 image is large and quiet
+- headline receives maximum editorial emphasis
+- price and specs become understated metadata
+- CTA becomes minimal and typographic
 
 Message proved:
 
 > 절제되고 고급스러운 브랜드 표현도 가능하다.
 
-This should be the first actual portfolio work the viewer sees, so it needs to feel unusually polished rather than merely safe.
+This is the first actual portfolio work the viewer sees and must feel unusually polished.
 
-### Style 02 — Swiss / Functional
+## Style 02 — Swiss / Functional
 
 Character:
 
 - strict grid
-- strong typographic hierarchy
 - highly legible sans-serif system
-- limited color palette
+- limited palette
 - visible alignment logic
-- functional navigation and information density
+- denser product information
+
+What changes:
+
+- the same content snaps into a clear modular grid
+- ARC 01, price, dimensions, material, and controls become information-led
+- the hero visual is precisely cropped and aligned rather than atmospheric
 
 Message proved:
 
 > 같은 내용을 훨씬 명확하고 구조적인 방향으로 만들 수도 있다.
 
-The transition from Style 01 should visibly tighten and reorganize the composition rather than merely recolor it.
+The transition from Style 01 must visibly tighten and reorganize the existing elements.
 
-### Style 03 — Playful / Expressive
+## Style 03 — Playful / Expressive
 
 Character:
 
 - confident color
 - oversized type
-- more elastic spacing
-- expressive shape or image cropping
-- responsive, tactile micro-motion
+- elastic spacing
+- expressive image cropping
+- tactile motion
 - playful controls without becoming childish
+
+What changes:
+
+- the same headline may break into oversized typographic blocks
+- the same lamp may cross or interrupt the text composition
+- price / CTA may become bold graphic elements
+- `빛 켜보기` can receive more visible interactive treatment
 
 Message proved:
 
 > 브랜드가 원한다면 훨씬 대담하고 개성 있는 웹도 가능하다.
 
-This state should feel authored and lively, not like generic pastel SaaS UI.
+Avoid generic pastel SaaS styling.
 
-### Style 04 — Cinematic / Immersive
+## Style 04 — Cinematic / Immersive
 
 Character:
 
 - dark or image-dominant environment
 - strong depth and scale
-- minimal but deliberate text
-- atmospheric motion tied to the hero visual
-- content layered into a more immersive composition
+- minimal but deliberate typography
+- atmospheric motion tied to the lamp and its light
 
-Avoid neon gradients, glowing SaaS cards, or fake developer aesthetics.
+What changes:
+
+- the same ARC 01 becomes the primary environmental light source
+- product copy moves into a quieter layered composition
+- the interior image / scene can dominate the viewport
+- no neon SaaS glow, cards, or fake-tech language
 
 Message proved:
 
 > 같은 정보도 화면 전체를 경험처럼 사용하는 방향으로 만들 수 있다.
 
-This is the final style state and should visually prepare the transition into Slide 03 rather than ending on a static card.
+This final state must prepare the handoff into Slide 03.
 
-## Interaction ownership
+## Transformation choreography
 
-Slide 02 temporarily owns wheel / arrow input as an internal style timeline.
+The website transforms rather than being replaced by screenshots.
 
-Conceptual states:
+For each style change:
 
-`style-01 -> style-02 -> style-03 -> style-04 -> complete`
+1. current content responds to the wheel / arrow intent,
+2. existing elements travel toward their next positions,
+3. layout geometry changes,
+4. typography system changes,
+5. image crop / scale changes while ARC 01 stays recognizable,
+6. CTA and navigation restyle,
+7. the new design settles into a stable state.
 
-Rules:
+Do not solve this as four crossfading full-screen screenshots.
 
-- entering Slide 02 lands on Style 01.
-- one deliberate downward navigation intent advances at most one style.
-- one deliberate upward intent returns at most one style.
-- while a style transformation is settling, duplicate input cannot skip a style.
-- only after Style 04 has fully settled does the next deliberate downward intent advance to Slide 03.
-- from Style 01, an upward intent may return to Slide 01.
-- visible arrow controls and keyboard arrows follow the same internal state model as the wheel.
-
-The local style indicator makes it clear that the viewer is progressing within Slide 02 rather than accidentally stuck.
-
-## Transition choreography between styles
-
-The website should transform, not be replaced by a screenshot carousel.
-
-Preferred behavior:
-
-1. Existing content begins responding to the navigation gesture.
-2. Layout positions move toward the next composition.
-3. Background / surface treatment changes.
-4. Typography treatment changes as part of the morph.
-5. Hero visual changes crop, scale, or framing while remaining recognizably the same visual subject.
-6. Navigation and CTA restyle to match the new system.
-7. The new theme settles into a fully usable state.
-
-Where possible, the same visible elements should travel to their new positions so the viewer can track continuity.
-
-Do not solve this as four unrelated full-screen images crossfading into each other.
+The viewer should be able to track the same content through the morph.
 
 ## Scroll feel
 
-Theme progression should feel continuous even though it resolves into four stable design states.
+Small wheel motion may hint at the upcoming theme. A committed gesture completes one transformation.
 
-Small wheel movement may preview the next visual direction slightly, while a committed gesture completes the transformation.
-
-The user should feel that the design is being re-authored under their input rather than that they clicked a theme switcher.
-
-Do not require precise scrub control. The presentation still uses intentional gesture thresholds and stable resting states.
-
-## Content choice requirements
-
-The fictional content used for this demonstration must work convincingly in all four styles.
-
-Prefer a simple brand / product brief with:
-
-- one strong object or hero visual
-- a short headline
-- one short paragraph
-- one CTA
-- a few metadata items
-
-Avoid content that inherently belongs to only one style, such as a gaming product that makes the luxury treatment feel absurd.
-
-A furniture object, design object, small lifestyle product, exhibition, architecture studio, or similarly neutral subject would work well.
-
-Exact fictional brand and copy remain to be chosen.
+Do not require precise scrub control. The deck still resolves into four stable style states.
 
 ## Transition in from Slide 01
 
-Slide 01 leaves the phrase:
+Slide 01 briefly leaves:
 
 > 직접 보여드리겠습니다.
 
-briefly visible during the handoff.
+Style 01 rises from below immediately. No second title card appears.
 
-The first Editorial / Luxury composition rises from below and takes visual control while that phrase yields to the outer Slide 02 caption:
+The outer caption becomes:
 
 > 내용은 그대로. 인상은 전혀 다르게.
 
-The first real work should appear quickly; do not insert another title card between Slide 01 and the demo.
-
 ## Transition out to Slide 03
 
-After Style 04 settles, the final visual state should provide a natural spatial setup for the Responsive demonstration.
+Style 04 does not disappear.
 
-Preferred handoff:
+The same VELLUM / ARC 01 product page becomes more explicitly viewport-bound and continues into Slide 03.
 
-- the same demo website remains present,
-- its outer composition begins to become more obviously browser-like / viewport-bound,
-- the next committed downward gesture carries that same website into Slide 03,
-- Slide 03 then demonstrates desktop -> phone -> tablet adaptation.
+Slide 03 then demonstrates the same site as:
 
-This creates continuity:
+`desktop -> phone -> live phone scroll -> tablet -> live tablet scroll`
 
-> 먼저 스타일을 바꿔 보여주고, 다음에는 같은 웹이 화면 크기에 맞춰 어떻게 바뀌는지 보여준다.
+This continuity is important:
 
-If feasible, Slide 02 and Slide 03 should reuse the same fictional content so the transition feels like one growing demonstration rather than unrelated samples.
+> 먼저 같은 내용을 여러 스타일로 보여주고, 다음에는 같은 웹이 화면 크기에 맞춰 어떻게 다시 구성되는지 보여준다.
 
 ## Proof condition
 
-Slide 02 succeeds if a viewer can clearly tell that:
+Slide 02 succeeds if the viewer can clearly tell that:
 
-1. the content is the same,
-2. the visual identity is materially different in every state,
+1. the product, copy, price, and information are the same,
+2. every style has materially different typography and layout logic,
 3. the differences go beyond color swaps,
-4. the transformation itself feels intentionally designed,
-5. the viewer understands that this range can be applied to client work.
+4. the same ARC 01 object remains recognizable throughout,
+5. the transformation itself feels authored,
+6. Style 04 can continue naturally into the responsive demo.
 
-## Failure / delete conditions
+## Failure / rework conditions
 
-Rework the slide if:
+Rework if:
 
 - the styles differ mostly by color,
-- every style preserves the same card layout underneath,
-- the viewer could reasonably mistake the sequence for four templates,
-- the style changes take so many wheel gestures that the presentation feels stuck,
-- one style looks intentionally weaker merely to make another look better,
-- Style 04 duplicates the later Retro / Legacy joke,
-- Slide 02 becomes longer or more impressive than the rest of the portfolio combined.
+- every state secretly uses the same card layout,
+- content changes between styles to make a design easier,
+- the lamp itself changes identity between themes,
+- the sequence feels like a template carousel,
+- one theme is intentionally weaker than the others,
+- the sequence takes so many gestures that Slide 02 feels endless,
+- Style 04 duplicates the later Retro / Legacy contrast.
