@@ -28,10 +28,10 @@
   const deviceCamera = document.getElementById('deviceCamera');
   const deviceShadow = document.getElementById('deviceShadow');
   const devicePhaseLabel = document.getElementById('devicePhaseLabel');
+  const legacyChapter = document.getElementById('legacy');
   const legacyWindow = document.getElementById('legacyWindow');
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const finePointer = window.matchMedia('(pointer: fine)').matches;
 
   const themes = [
     {
@@ -205,7 +205,7 @@
   }
 
   function renderLegacy(scrollY) {
-    const p = chapterProgress(document.getElementById('legacy'), scrollY);
+    const p = chapterProgress(legacyChapter, scrollY);
     const enter = range(p, 0, .22);
     const stepped = Math.round(enter * 5) / 5;
     legacyWindow.style.transform = `translateY(${(1 - stepped) * 28}px)`;
@@ -233,44 +233,133 @@
   let currentY = window.scrollY;
   let smoothActive = false;
   let smoothFrame = 0;
+  let lastSmoothTime = 0;
+  let legacyWheelAccumulator = 0;
+  let legacyWheelLocked = false;
+  let legacyWheelTimer = 0;
 
   function maximumScroll() {
     return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
   }
 
-  function animateSmoothScroll() {
+  function legacyBounds() {
+    const start = legacyChapter.offsetTop;
+    const end = Math.max(start, legacyChapter.offsetTop + legacyChapter.offsetHeight - window.innerHeight);
+    return { start, end };
+  }
+
+  function isLegacyPosition(scrollY = window.scrollY) {
+    const { start, end } = legacyBounds();
+    return scrollY >= start - 1 && scrollY <= end + 1;
+  }
+
+  function stopSmoothScroll() {
+    if (smoothFrame) cancelAnimationFrame(smoothFrame);
+    smoothFrame = 0;
+    smoothActive = false;
+    lastSmoothTime = 0;
+    currentY = window.scrollY;
+    targetY = currentY;
+  }
+
+  function constrainToLegacyBoundary(from, to) {
+    const { start, end } = legacyBounds();
+    if (from < start && to > start) return start;
+    if (from > end && to < end) return end;
+    return to;
+  }
+
+  function animateSmoothScroll(now) {
+    const deltaSeconds = lastSmoothTime ? Math.min((now - lastSmoothTime) / 1000, .05) : 1 / 60;
+    lastSmoothTime = now;
+
     const distance = targetY - currentY;
-    currentY += distance * .13;
-    if (Math.abs(distance) < .55) currentY = targetY;
+    const follow = 1 - Math.exp(-6.2 * deltaSeconds);
+    currentY += distance * follow;
+
+    if (Math.abs(distance) < .35) currentY = targetY;
+
     window.scrollTo(0, currentY);
     queueRender();
+
     if (currentY !== targetY) {
       smoothFrame = requestAnimationFrame(animateSmoothScroll);
     } else {
       smoothActive = false;
       smoothFrame = 0;
+      lastSmoothTime = 0;
     }
   }
 
   function moveTarget(delta) {
-    targetY = clamp(targetY + delta, 0, maximumScroll());
+    const proposed = clamp(targetY + delta, 0, maximumScroll());
+    targetY = constrainToLegacyBoundary(targetY, proposed);
+
     if (!smoothActive) {
       smoothActive = true;
       currentY = window.scrollY;
-      cancelAnimationFrame(smoothFrame);
+      lastSmoothTime = 0;
+      if (smoothFrame) cancelAnimationFrame(smoothFrame);
       smoothFrame = requestAnimationFrame(animateSmoothScroll);
     }
   }
 
-  if (!reducedMotion && finePointer) {
+  function legacyStep(direction) {
+    const { start, end } = legacyBounds();
+    const y = window.scrollY;
+
+    if ((direction < 0 && y <= start + 1) || (direction > 0 && y >= end - 1)) {
+      currentY = y;
+      targetY = y;
+      moveTarget(window.innerHeight * .86 * direction);
+      return;
+    }
+
+    stopSmoothScroll();
+    const step = Math.max(120, window.innerHeight * .2);
+    const next = clamp(y + step * direction, start, end);
+    window.scrollTo(0, next);
+    currentY = next;
+    targetY = next;
+    queueRender();
+  }
+
+  function resetLegacyWheelSoon() {
+    window.clearTimeout(legacyWheelTimer);
+    legacyWheelTimer = window.setTimeout(() => {
+      legacyWheelAccumulator = 0;
+      legacyWheelLocked = false;
+    }, 150);
+  }
+
+  if (!reducedMotion) {
     window.addEventListener('wheel', (event) => {
       if (event.ctrlKey || event.metaKey) return;
       const editable = event.target.closest('input, textarea, select');
       if (editable) return;
+
       event.preventDefault();
       const modeScale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
-      const normalized = clamp(event.deltaY * modeScale, -180, 180);
-      moveTarget(normalized * 1.08);
+      const normalized = clamp(event.deltaY * modeScale, -220, 220);
+
+      if (isLegacyPosition()) {
+        stopSmoothScroll();
+        legacyWheelAccumulator += normalized;
+
+        if (!legacyWheelLocked && Math.abs(legacyWheelAccumulator) >= 36) {
+          const direction = legacyWheelAccumulator > 0 ? 1 : -1;
+          legacyWheelAccumulator = 0;
+          legacyWheelLocked = true;
+          legacyStep(direction);
+        }
+
+        resetLegacyWheelSoon();
+        return;
+      }
+
+      legacyWheelAccumulator = 0;
+      legacyWheelLocked = false;
+      moveTarget(normalized * 1.22);
     }, { passive: false });
   }
 
@@ -289,9 +378,14 @@
   });
 
   function nudge(direction) {
+    if (isLegacyPosition()) {
+      legacyStep(direction);
+      return;
+    }
+
     const delta = window.innerHeight * .86 * direction;
-    if (reducedMotion || !finePointer) {
-      window.scrollBy({ top: delta, behavior: reducedMotion ? 'auto' : 'smooth' });
+    if (reducedMotion) {
+      window.scrollBy({ top: delta, behavior: 'auto' });
       return;
     }
     moveTarget(delta);
@@ -312,11 +406,11 @@
   });
 
   restartButton.addEventListener('click', () => {
+    stopSmoothScroll();
     targetY = 0;
-    if (reducedMotion || !finePointer) {
-      window.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
+    if (reducedMotion) {
+      window.scrollTo({ top: 0, behavior: 'auto' });
     } else {
-      smoothActive = false;
       currentY = window.scrollY;
       moveTarget(-currentY);
     }
