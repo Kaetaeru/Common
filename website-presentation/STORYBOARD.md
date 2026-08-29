@@ -6,7 +6,9 @@
 - Existing `website-demo/` is deprecated for the new direction and will not be reused as a design foundation.
 - New implementation begins under `website-presentation/` only after the storyboard is sufficiently locked.
 - Slide 01 — Opening: LOCKED at concept level.
+- Slide 01 navigation tutorial: LOCKED at concept level.
 - Presentation shell theme: LOCKED at concept level.
+- Presentation navigation / transition system: LOCKED at concept level.
 
 ## Product definition
 
@@ -58,7 +60,7 @@ A highly branded shell would make viewers assume that one visual style is the cr
 
 - Full-screen presentation rather than a long landing page.
 - One scene / slide = one main message.
-- Navigation supports mouse wheel, keyboard arrows, and visible previous/next controls.
+- Navigation supports mouse wheel, keyboard arrow keys, and visible previous / next arrow controls.
 - A viewer should understand each scene in roughly 10–20 seconds.
 - Slides should follow this pattern whenever possible:
   1. Claim
@@ -67,6 +69,76 @@ A highly branded shell would make viewers assume that one visual style is the cr
 - Prefer showing capability directly instead of describing technical implementation.
 - Avoid developer-facing boasts such as framework names unless they materially help the demonstration.
 - Every slide must visibly prove something different.
+
+## Navigation and motion system — LOCKED CONCEPT
+
+Navigation is part of the portfolio demonstration. It must feel intentionally designed rather than like normal page scrolling.
+
+### Input model
+
+Supported primary inputs:
+
+- mouse wheel down -> next slide
+- mouse wheel up -> previous slide
+- visible down arrow -> next slide
+- visible up arrow -> previous slide
+- keyboard `ArrowDown` / `ArrowRight` -> next slide
+- keyboard `ArrowUp` / `ArrowLeft` -> previous slide
+
+The visible arrows are part of the persistent presentation frame, so a viewer never has to guess how to continue.
+
+### Wheel behavior
+
+The wheel must be treated as a slide-navigation gesture, not as unrestricted document scrolling.
+
+Requirements:
+
+- One deliberate wheel gesture should advance at most one slide.
+- Trackpad momentum must not skip several slides.
+- Small accidental wheel movement should not immediately fire a transition.
+- Wheel delta should accumulate until a deliberate threshold is reached.
+- While the transition is playing, further navigation input is temporarily ignored or queued as a single next intent.
+- Upward and downward gestures must produce directionally consistent motion.
+
+### Transition character
+
+The deck moves primarily on a vertical axis because the main physical input is the mouse wheel.
+
+The motion should feel like changing exhibits, not scrolling through a long webpage.
+
+General next-slide transition:
+
+1. The current demo canvas responds in the input direction and begins leaving upward.
+2. The next canvas is already present just below the stage and rises into place.
+3. Slide metadata changes separately and more quietly than the artwork.
+4. The persistent shell remains visually anchored so the viewer keeps spatial orientation.
+5. Motion settles cleanly into a full-screen resting state before another transition may complete.
+
+Previous-slide transition mirrors the same logic in reverse.
+
+### Motion quality
+
+- Use controlled easing with a strong start and soft landing rather than a generic `ease-in-out` feel.
+- Avoid identical fade-only transitions.
+- Avoid large 3D flips, carousel gimmicks, or motion that competes with the demonstrations.
+- A small amount of overlap between outgoing and incoming canvases is preferred so the transition feels continuous.
+- Slide-specific transitions are allowed when they reinforce that slide's concept, but they must still obey the same navigation state model.
+- Reduced-motion users receive a short crossfade / minimal translation instead of full movement.
+
+### Transition state model
+
+The presentation has four conceptual states:
+
+- `resting` — current slide is fully settled and accepts navigation.
+- `intent` — wheel delta or arrow input indicates a direction but has not yet committed accidentally.
+- `transitioning` — one slide change is in progress; duplicate input cannot skip slides.
+- `settled` — the next slide becomes the new resting state and navigation unlocks.
+
+Invariant:
+
+> A single navigation intent can commit at most one slide change.
+
+This is especially important for high-resolution mouse wheels and trackpads.
 
 ## Persistent presentation frame
 
@@ -77,10 +149,12 @@ Expected persistent elements:
 - Project identity / mark: `KAETARU / WEB`
 - Slide number, e.g. `03 / 08`
 - Capability label
-- Previous / Next controls
+- Visible previous `↑` and next `↓` controls
 - Progress indicator
 
 These should behave more like gallery wayfinding than website navigation.
+
+The arrow controls should visually react when used so the control itself confirms the direction before the canvas moves.
 
 ## Working capability sequence — 8 slides
 
@@ -218,10 +292,11 @@ Open the presentation, establish the presentation grammar, and teach navigation 
 
 **First 3 seconds**
 
-The viewer should understand only two things:
+The viewer should understand three things:
 
 1. This presentation intends to show rather than explain.
-2. There is a clear action that moves to the next scene.
+2. Mouse wheel or arrow controls move between scenes.
+3. The slides themselves move as a designed response to that input.
 
 **Opening state**
 
@@ -240,17 +315,27 @@ Persistent frame visible from the beginning:
 - `KAETARU / WEB`
 - `01 / 08`
 - progress indicator
-- previous / next controls
+- visible `↑` / `↓` controls
+
+A small navigation hint appears near the lower portion of the stage. It should read like gallery wayfinding rather than a tutorial popup.
+
+Recommended instruction:
+
+> 마우스 휠 또는 화살표로 넘겨보세요.
+
+A minimal visual version may pair the sentence with a wheel icon or `↑ ↓`, but should not add a large onboarding modal.
 
 **Viewer interaction**
 
 Only the presentation navigation is introduced here:
 
 - mouse wheel
+- visible arrow controls
 - keyboard arrow keys
-- visible `NEXT` control
 
 Do not add a second interactive gimmick on the opening slide.
+
+The navigation hint may subtly react to the first detected wheel or arrow input, then disappear after the viewer successfully reaches Slide 02. It should not keep repeating on every slide.
 
 **Visual language**
 
@@ -265,20 +350,27 @@ Avoid on this slide:
 - decorative gradients
 - multiple CTAs
 - automatic decorative motion
+- modal-style onboarding instructions
 
 **Transition out**
 
-The copy itself participates in the transition.
+The first navigation gesture is the viewer's introduction to the motion system.
 
-`설명보다,` disappears first.
+When advancing:
 
-`직접 보여드리겠습니다.` remains briefly and becomes the semantic handoff into Slide 02, where the first real demonstration appears.
+1. The instruction hint acknowledges the input and fades away.
+2. `설명보다,` disappears first.
+3. `직접 보여드리겠습니다.` remains briefly as the current stage begins to travel upward.
+4. The first real demo canvas rises from below.
+5. The surviving phrase becomes the semantic handoff into Slide 02 and then yields to the actual demonstration.
 
-The transition should make the sentence true rather than merely animate the screen.
+The frame stays anchored while the canvas moves, making it clear that the viewer has entered the next exhibit rather than scrolled down a webpage.
 
 **Proof condition**
 
-Without instructions or hesitation, the viewer can advance once and understands that the experience is slide-based and interactive.
+Without hesitation, the viewer can use either the wheel or visible arrows to advance exactly one slide and immediately understands that navigation itself is part of the designed experience.
+
+The same input direction must always produce the same spatial transition direction.
 
 **Failure / delete condition**
 
@@ -287,7 +379,9 @@ The opening fails if:
 - it becomes more visually memorable than the actual demonstrations,
 - the viewer mistakes it for a normal landing-page hero,
 - the user has to search for how to continue,
-- it introduces more than one interaction model at once.
+- one wheel gesture can skip multiple slides,
+- the movement feels like ordinary browser scrolling rather than a presentation transition,
+- navigation instructions dominate the composition.
 
 ## Current work order
 
