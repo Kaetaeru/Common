@@ -30,6 +30,34 @@
   const legacyChapter = document.getElementById('legacy');
   const legacyWindow = document.getElementById('legacyWindow');
 
+  let arcImageObjectUrl = null;
+
+  async function restoreArcImageForPreview() {
+    try {
+      const source = 'https://raw.githubusercontent.com/Kaetaeru/Common/main/website-presentation/arc01-image.css';
+      const response = await fetch(source, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`ARC image source returned ${response.status}`);
+      const css = await response.text();
+      const match = css.match(/data:image\/webp;base64,([A-Za-z0-9+/=]+)/);
+      if (!match) throw new Error('ARC image data was not found');
+
+      const binary = atob(match[1]);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+
+      arcImageObjectUrl = URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }));
+      document.documentElement.style.setProperty('--arc-image', `url("${arcImageObjectUrl}")`);
+      document.documentElement.dataset.arcImageReady = 'true';
+    } catch (error) {
+      console.warn('ARC 01 image fallback could not be restored.', error);
+    }
+  }
+
+  restoreArcImageForPreview();
+  window.addEventListener('pagehide', () => {
+    if (arcImageObjectUrl) URL.revokeObjectURL(arcImageObjectUrl);
+  }, { once: true });
+
   const themes = [
     {
       name: 'EDITORIAL / LUXURY', surface: [239, 234, 224], fg: [22, 20, 18], accent: [165, 120, 70],
