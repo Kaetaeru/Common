@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f1eee6">
+  <title>KAETARU / WEB — Interactive Portfolio Demo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#slide-1">콘텐츠로 건너뛰기</a>
+
+  <main class="presentation" id="presentation" aria-live="polite">
+    <div class="slides-track" id="slidesTrack">
+      <section class="slide slide-opening" id="slide-1" data-label="INTRO" aria-label="1. 소개">
+        <div class="opening-stage">
+          <p class="opening-kicker">INTERACTIVE WEB PORTFOLIO</p>
+          <h1><span class="opening-soft">설명보다,</span><br><span>직접 보여드리겠습니다.</span></h1>
+          <p class="opening-sub">웹사이트 디자인 · 인터랙션 · 기능 구현</p>
+          <div class="opening-hint" id="openingHint">
+            <span class="mouse-symbol" aria-hidden="true"><i></i></span>
+            <span>마우스 휠 또는 화살표로 넘겨보세요.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide slide-visual" id="slide-2" data-label="VISUAL DESIGN" aria-label="2. 비주얼 디자인">
+        <div class="slide-caption caption-light">
+          <span>내용은 그대로.</span>
+          <strong>인상은 전혀 다르게.</strong>
+        </div>
+
+        <article class="product-stage theme-luxury" id="productDemo" aria-label="VELLUM ARC 01 제품 디자인 데모">
+          <div class="product-grid" aria-hidden="true"></div>
+          <header class="product-nav">
+            <b>VELLUM</b>
+            <nav><span>Objects</span><span>Journal</span><span>About</span><span>Cart 0</span></nav>
+          </header>
+
+          <div class="product-copy">
+            <p class="product-category">OBJECTS / LIGHTING</p>
+            <h2>ARC 01</h2>
+            <h3>빛을 낮게,<br>공간을 깊게.</h3>
+            <p class="product-description">ARC 01은 얇은 알루미늄 아치와 부드러운 간접광을 결합한 플로어 램프입니다. 눈부심을 줄이고, 필요한 곳에만 따뜻한 빛을 남깁니다.</p>
+          </div>
+
+          <div class="lamp-wrap" aria-label="ARC 01 아치형 플로어 램프 그래픽">
+            <svg class="lamp-svg" viewBox="0 0 520 660" role="img" aria-label="얇은 아치형 플로어 램프">
+              <defs>
+                <filter id="lampGlow" x="-40%" y="-40%" width="180%" height="180%">
+                  <feGaussianBlur stdDeviation="13"></feGaussianBlur>
+                </filter>
+              </defs>
+              <ellipse class="lamp-shadow" cx="258" cy="617" rx="100" ry="18"></ellipse>
+              <ellipse class="lamp-base" cx="258" cy="598" rx="72" ry="16"></ellipse>
+              <path class="lamp-glow" d="M260 588 C255 345 265 153 455 113" filter="url(#lampGlow)"></path>
+              <path class="lamp-body" d="M260 588 C255 345 265 153 455 113"></path>
+              <path class="lamp-light" d="M294 281 C328 190 381 136 455 113"></path>
+            </svg>
+          </div>
+
+          <div class="product-purchase">
+            <strong>₩348,000</strong>
+            <div class="product-actions">
+              <button type="button" class="product-primary">제품 보기</button>
+              <button type="button" class="product-secondary">빛 켜보기</button>
+            </div>
+          </div>
+
+          <dl class="product-facts">
+            <div><dt>Material</dt><dd>Anodized aluminium</dd></div>
+            <div><dt>Light</dt><dd>2700K warm white</dd></div>
+            <div><dt>Height</dt><dd>1450 mm</dd></div>
+            <div><dt>Dimming</dt><dd>10–100%</dd></div>
+          </dl>
+
+          <div class="style-indicator" aria-live="polite">
+            <span id="styleName">EDITORIAL / LUXURY</span>
+            <b id="styleCount">STYLE 01 / 04</b>
+          </div>
+        </article>
+      </section>
+
+      <section class="slide slide-responsive" id="slide-3" data-label="RESPONSIVE" aria-label="3. 반응형 디자인">
+        <div class="responsive-copy">
+          <p>하나의 웹.</p>
+          <h2>화면이 바뀌면<br>구성도 바뀝니다.</h2>
+          <span id="devicePhaseLabel">DESKTOP</span>
+        </div>
+
+        <div class="device-stage" id="deviceStage">
+          <div class="device-shell device-desktop" id="deviceShell">
+            <div class="device-camera" aria-hidden="true"></div>
+            <div class="device-content" id="deviceContent">
+              <header class="device-nav"><b>VELLUM</b><span>Objects</span><span>Journal</span><span>Cart 0</span></header>
+              <div class="device-hero">
+                <div class="device-copy">
+                  <small>OBJECTS / LIGHTING</small>
+                  <h3>ARC 01</h3>
+                  <h4>빛을 낮게,<br>공간을 깊게.</h4>
+                  <p>얇은 알루미늄 아치와 부드러운 간접광을 결합한 플로어 램프.</p>
+                  <strong>₩348,000</strong>
+                  <button type="button">제품 보기</button>
+                </div>
+                <div class="device-lamp" aria-hidden="true">
+                  <svg viewBox="0 0 520 660">
+                    <ellipse cx="258" cy="617" rx="100" ry="18" class="mini-shadow"></ellipse>
+                    <ellipse cx="258" cy="598" rx="72" ry="16" class="mini-base"></ellipse>
+                    <path d="M260 588 C255 345 265 153 455 113" class="mini-body"></path>
+                    <path d="M294 281 C328 190 381 136 455 113" class="mini-light"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="device-details">
+                <p>ARC 01은 필요한 곳에만 따뜻한 빛을 남기도록 설계되었습니다.</p>
+                <dl>
+                  <div><dt>Material</dt><dd>Anodized aluminium</dd></div>
+                  <div><dt>Light</dt><dd>2700K</dd></div>
+                  <div><dt>Height</dt><dd>1450 mm</dd></div>
+                  <div><dt>Dimming</dt><dd>10–100%</dd></div>
+                </dl>
+              </div>
+            </div>
+          </div>
+          <div class="device-shadow" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <section class="slide slide-interaction" id="slide-4" data-label="INTERACTION + MOTION" aria-label="4. 인터랙션과 모션">
+        <div class="interaction-copy">
+          <p>작은 입력에도</p>
+          <h2>화면은 반응합니다.</h2>
+          <button type="button" id="lightToggle" aria-pressed="false">빛 켜보기</button>
+        </div>
+        <div class="room-demo" id="roomDemo" aria-label="조명을 켜고 끌 수 있는 인터랙션 데모">
+          <div class="room-glow"></div>
+          <div class="room-floor"></div>
+          <svg class="room-lamp" viewBox="0 0 520 660" aria-hidden="true">
+            <ellipse cx="258" cy="617" rx="100" ry="18" class="room-shadow"></ellipse>
+            <ellipse cx="258" cy="598" rx="72" ry="16" class="room-base"></ellipse>
+            <path d="M260 588 C255 345 265 153 455 113" class="room-body"></path>
+            <path d="M294 281 C328 190 381 136 455 113" class="room-light"></path>
+          </svg>
+          <p class="room-note">CLICK / HOVER / MOVE</p>
+        </div>
+      </section>
+
+      <section class="slide slide-legacy" id="slide-5" data-label="LEGACY WEB" aria-label="5. 레거시 웹 스타일">
+        <div class="legacy-window">
+          <div class="legacy-titlebar"><span>VELLUM LIGHTING - Microsoft Internet Explorer</span><span>_ □ ×</span></div>
+          <div class="legacy-toolbar">File &nbsp; Edit &nbsp; View &nbsp; Favorites &nbsp; Help</div>
+          <div class="legacy-address"><b>Address</b> &nbsp; http://www.vellum-lighting.example/arc01.html</div>
+          <div class="legacy-page">
+            <h2>WELCOME TO VELLUM LIGHTING!!!</h2>
+            <p class="legacy-blink">★ NEW! ARC 01 FLOOR LIGHT NOW AVAILABLE ★</p>
+            <table>
+              <tr>
+                <td class="legacy-nav-cell">
+                  <b>MAIN MENU</b><br><br>
+                  <a href="#">HOME</a><br>
+                  <a href="#">PRODUCTS</a><br>
+                  <a href="#">ABOUT US</a><br>
+                  <a href="#">GUESTBOOK</a><br><br>
+                  <button type="button">ADD TO FAVORITES</button>
+                </td>
+                <td class="legacy-product-cell">
+                  <h3>ARC 01</h3>
+                  <p><b>빛을 낮게, 공간을 깊게.</b></p>
+                  <div class="legacy-lamp" aria-hidden="true">╭──────╮<br>│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╲<br>│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╲<br>│<br>│<br>╰───●</div>
+                  <p>PRICE: <b>₩348,000</b></p>
+                  <p>Material: Anodized aluminium<br>Light: 2700K warm white<br>Height: 1450 mm</p>
+                  <button type="button">[ PRODUCT INFO ]</button>
+                </td>
+              </tr>
+            </table>
+            <hr>
+            <p class="legacy-footer">Best viewed at 800 × 600 · Visitor #001337 · © 1999 VELLUM</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide slide-app" id="slide-6" data-label="FUNCTIONAL UI" aria-label="6. 기능형 UI">
+        <div class="app-copy">
+          <p>보기 좋은 화면에서</p>
+          <h2>실제로 쓰는 화면까지.</h2>
+        </div>
+        <div class="configurator">
+          <div class="config-preview" id="configPreview">
+            <div class="config-light"></div>
+            <svg viewBox="0 0 520 660" aria-hidden="true">
+              <ellipse cx="258" cy="617" rx="100" ry="18" class="config-shadow"></ellipse>
+              <ellipse cx="258" cy="598" rx="72" ry="16" class="config-base"></ellipse>
+              <path d="M260 588 C255 345 265 153 455 113" class="config-body"></path>
+              <path d="M294 281 C328 190 381 136 455 113" class="config-beam"></path>
+            </svg>
+          </div>
+          <form class="config-panel" id="configForm">
+            <p>ARC 01 CONFIGURATOR</p>
+            <fieldset>
+              <legend>Finish</legend>
+              <div class="finish-buttons">
+                <button type="button" class="finish active" data-finish="silver" aria-pressed="true">Warm Silver</button>
+                <button type="button" class="finish" data-finish="graphite" aria-pressed="false">Graphite</button>
+              </div>
+            </fieldset>
+            <label for="dimmer">Brightness <output id="dimmerOutput">72%</output></label>
+            <input id="dimmer" type="range" min="10" max="100" value="72">
+            <div class="config-total"><span>Total</span><strong>₩348,000</strong></div>
+            <button type="button" class="config-cta">구성 저장</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="slide slide-data" id="slide-7" data-label="DATA / DASHBOARD" aria-label="7. 데이터 대시보드">
+        <div class="dashboard">
+          <header><div><span>VELLUM / OPERATIONS</span><h2>오늘의 주문 흐름</h2></div><strong>LIVE DEMO DATA</strong></header>
+          <div class="dashboard-grid">
+            <article class="metric"><span>Orders</span><b>128</b><small>+14.3%</small></article>
+            <article class="metric"><span>Revenue</span><b>₩44.5M</b><small>+8.1%</small></article>
+            <article class="metric"><span>Conversion</span><b>3.8%</b><small>+0.4pt</small></article>
+            <article class="chart-card">
+              <div class="chart-head"><span>Hourly orders</span><span>09:00 — 18:00</span></div>
+              <div class="bars" aria-label="시간대별 주문량 데모 차트">
+                <i style="--v:34%"></i><i style="--v:47%"></i><i style="--v:42%"></i><i style="--v:68%"></i><i style="--v:58%"></i><i style="--v:76%"></i><i style="--v:64%"></i><i style="--v:88%"></i><i style="--v:74%"></i><i style="--v:92%"></i>
+              </div>
+            </article>
+            <article class="orders-card">
+              <div><span>#10482</span><b>ARC 01 / Silver</b><em>Paid</em></div>
+              <div><span>#10481</span><b>ARC 01 / Graphite</b><em>Paid</em></div>
+              <div><span>#10480</span><b>ARC 01 / Silver</b><em>Review</em></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide slide-close" id="slide-8" data-label="CONTACT" aria-label="8. 마무리">
+        <div class="close-stage">
+          <p>여기까지가 하나의 데모입니다.</p>
+          <h2>원하는 방향을 말해주시면,<br>그 방향으로 만듭니다.</h2>
+          <div class="close-links">
+            <a href="https://github.com/Kaetaeru" target="_blank" rel="noreferrer">GitHub ↗</a>
+            <button type="button" id="restartButton">처음부터 다시 보기 ↟</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="legacy-flash" id="legacyFlash" aria-hidden="true"></div>
+
+    <aside class="presentation-frame" aria-label="프레젠테이션 탐색">
+      <div class="frame-top">
+        <strong>KAETARU / WEB</strong>
+        <div class="frame-progress" aria-hidden="true"><span id="progressFill"></span></div>
+        <span id="slideNumber">01 / 08</span>
+      </div>
+      <div class="frame-bottom">
+        <span id="slideLabel">INTRO</span>
+        <div class="frame-arrows">
+          <button type="button" id="prevButton" aria-label="이전 장면">↑</button>
+          <button type="button" id="nextButton" aria-label="다음 장면">↓</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
