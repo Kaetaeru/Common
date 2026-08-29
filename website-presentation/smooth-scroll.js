@@ -1,22 +1,63 @@
 (() => {
+  const chapters = [...document.querySelectorAll('.chapter')];
   const legacyChapter = document.getElementById('legacy');
-  if (!legacyChapter) return;
+  const prevButton = document.getElementById('prevButton');
+  const nextButton = document.getElementById('nextButton');
+  const restartButton = document.getElementById('restartButton');
+  if (!chapters.length || !legacyChapter) return;
 
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-  const wheelGain = 10;
-  const friction = 4.6;
-  const maxVelocity = 3200;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const wheelThreshold = 32;
+  const gestureIdleMs = 180;
 
-  let position = window.scrollY;
-  let velocity = 0;
-  let frame = 0;
-  let lastTime = 0;
-  let legacyAccumulator = 0;
-  let legacyLocked = false;
-  let legacyResetTimer = 0;
+  let checkpoints = [];
+  let animating = false;
+  let animationFrame = 0;
+  let wheelAccumulator = 0;
+  let wheelDirection = 0;
+  let gestureConsumed = false;
+  let gestureResetTimer = 0;
 
-  function maximumScroll() {
-    return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  function chapterY(chapter, progress = 0) {
+    const travel = Math.max(0, chapter.offsetHeight - window.innerHeight);
+    return chapter.offsetTop + travel * progress;
+  }
+
+  function addCheckpoint(list, chapterId, progress, name) {
+    const chapter = document.getElementById(chapterId);
+    if (!chapter) return;
+    list.push({ y: chapterY(chapter, progress), chapterId, name });
+  }
+
+  function rebuildCheckpoints() {
+    const list = [];
+
+    addCheckpoint(list, 'intro', 0, 'intro');
+
+    addCheckpoint(list, 'visual', 0, 'visual-1');
+    addCheckpoint(list, 'visual', 1 / 3, 'visual-2');
+    addCheckpoint(list, 'visual', 2 / 3, 'visual-3');
+    addCheckpoint(list, 'visual', 1, 'visual-4');
+
+    addCheckpoint(list, 'responsive', 0, 'responsive-desktop');
+    addCheckpoint(list, 'responsive', 0.22, 'responsive-phone');
+    addCheckpoint(list, 'responsive', 0.42, 'responsive-phone-scroll');
+    addCheckpoint(list, 'responsive', 0.68, 'responsive-tablet');
+    addCheckpoint(list, 'responsive', 0.9, 'responsive-tablet-scroll');
+    addCheckpoint(list, 'responsive', 1, 'responsive-complete');
+
+    addCheckpoint(list, 'interaction', 0, 'interaction');
+    addCheckpoint(list, 'legacy', 0, 'legacy');
+    addCheckpoint(list, 'functional', 0, 'functional');
+    addCheckpoint(list, 'data', 0, 'data');
+    addCheckpoint(list, 'close', 0, 'close');
+
+    const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    checkpoints = list
+      .map((checkpoint) => ({ ...checkpoint, y: clamp(checkpoint.y, 0, maxScroll) }))
+      .sort((a, b) => a.y - b.y)
+      .filter((checkpoint, index, all) => index === 0 || Math.abs(checkpoint.y - all[index - 1].y) > 2);
   }
 
   function legacyBounds() {
@@ -25,96 +66,99 @@
     return { start, end };
   }
 
-  function isInsideLegacy(y = window.scrollY) {
+  function insideLegacy(y) {
     const { start, end } = legacyBounds();
-    return y >= start - 1 && y <= end + 1;
+    return y >= start - 2 && y <= end + 2;
   }
 
-  function stopMomentum() {
-    if (frame) cancelAnimationFrame(frame);
-    frame = 0;
-    lastTime = 0;
-    velocity = 0;
-    position = window.scrollY;
+  function nextCheckpointIndex(direction, y = window.scrollY) {
+    if (!checkpoints.length) return -1;
+
+    if (direction > 0) {
+      const index = checkpoints.findIndex((checkpoint) => checkpoint.y > y + 4);
+      return index === -1 ? checkpoints.length - 1 : index;
+    }
+
+    for (let index = checkpoints.length - 1; index >= 0; index -= 1) {
+      if (checkpoints[index].y < y - 4) return index;
+    }
+    return 0;
   }
 
-  function startMomentum() {
-    if (frame) return;
-    position = window.scrollY;
-    lastTime = performance.now();
-    frame = requestAnimationFrame(tick);
+  function stopAnimation() {
+    if (animationFrame) cancelAnimationFrame(animationFrame);
+    animationFrame = 0;
+    animating = false;
   }
 
-  function constrainLegacyCrossing(previousY, nextY) {
-    const { start, end } = legacyBounds();
-    if (previousY < start && nextY >= start) return start;
-    if (previousY > end && nextY <= end) return end;
-    return nextY;
+  function smoothEase(t) {
+    return 1 - Math.pow(1 - t, 4);
   }
 
-  function tick(now) {
-    const dt = Math.min(Math.max((now - lastTime) / 1000, 0), 0.034);
-    lastTime = now;
+  function steppedEase(t) {
+    const steps = 6;
+    if (t >= 1) return 1;
+    return Math.floor(t * steps) / steps;
+  }
 
-    const previousY = position;
-    let nextY = position + velocity * dt;
-    nextY = constrainLegacyCrossing(previousY, nextY);
-    nextY = clamp(nextY, 0, maximumScroll());
+  function animateTo(targetY, mode = 'smooth') {
+    stopAnimation();
 
-    const hitBoundary = nextY !== position + velocity * dt;
-    position = nextY;
-    window.scrollTo(0, position);
-
-    velocity *= Math.exp(-friction * dt);
-
-    if (hitBoundary || Math.abs(velocity) < 6) {
-      velocity = 0;
-      position = window.scrollY;
-      frame = 0;
-      lastTime = 0;
+    const startY = window.scrollY;
+    const distance = Math.abs(targetY - startY);
+    if (distance < 2) {
+      window.scrollTo(0, targetY);
       return;
     }
 
-    frame = requestAnimationFrame(tick);
-  }
+    const legacy = mode === 'legacy';
+    const duration = reducedMotion
+      ? 120
+      : legacy
+        ? 430
+        : clamp(680 + distance * 0.12, 760, 1180);
+    const ease = legacy ? steppedEase : smoothEase;
+    const startedAt = performance.now();
+    animating = true;
 
-  function addWheelImpulse(delta) {
-    if (!frame) startMomentum();
-    velocity = clamp(velocity + delta * wheelGain, -maxVelocity, maxVelocity);
-  }
+    function tick(now) {
+      const progress = clamp((now - startedAt) / duration, 0, 1);
+      const eased = ease(progress);
+      window.scrollTo(0, startY + (targetY - startY) * eased);
 
-  function exitLegacy(direction) {
-    stopMomentum();
-    velocity = direction * 1100;
-    startMomentum();
-  }
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(tick);
+        return;
+      }
 
-  function legacyStep(direction) {
-    const { start, end } = legacyBounds();
-    const y = window.scrollY;
-
-    if (direction < 0 && y <= start + 1) {
-      exitLegacy(-1);
-      return;
-    }
-    if (direction > 0 && y >= end - 1) {
-      exitLegacy(1);
-      return;
+      window.scrollTo(0, targetY);
+      animationFrame = 0;
+      animating = false;
     }
 
-    stopMomentum();
-    const step = Math.max(120, window.innerHeight * 0.2);
-    const next = clamp(y + step * direction, start, end);
-    window.scrollTo(0, next);
-    position = next;
+    animationFrame = requestAnimationFrame(tick);
   }
 
-  function resetLegacyWheelSoon() {
-    window.clearTimeout(legacyResetTimer);
-    legacyResetTimer = window.setTimeout(() => {
-      legacyAccumulator = 0;
-      legacyLocked = false;
-    }, 140);
+  function go(direction) {
+    rebuildCheckpoints();
+    const fromY = window.scrollY;
+    const index = nextCheckpointIndex(direction, fromY);
+    if (index < 0) return;
+
+    const target = checkpoints[index];
+    const mode = insideLegacy(fromY) || insideLegacy(target.y) || target.chapterId === 'legacy'
+      ? 'legacy'
+      : 'smooth';
+    animateTo(target.y, mode);
+  }
+
+  function resetGestureSoon() {
+    window.clearTimeout(gestureResetTimer);
+    gestureResetTimer = window.setTimeout(() => {
+      wheelAccumulator = 0;
+      wheelDirection = 0;
+      gestureConsumed = false;
+    }, gestureIdleMs);
   }
 
   window.addEventListener('wheel', (event) => {
@@ -126,40 +170,75 @@
     event.preventDefault();
     event.stopImmediatePropagation();
 
-    const modeScale = event.deltaMode === 1 ? 28 : event.deltaMode === 2 ? window.innerHeight : 1;
-    const normalized = clamp(event.deltaY * modeScale, -140, 140);
-    if (!normalized) return;
+    const modeScale = event.deltaMode === 1 ? 24 : event.deltaMode === 2 ? window.innerHeight : 1;
+    const delta = clamp(event.deltaY * modeScale, -160, 160);
+    if (!delta) return;
 
-    if (isInsideLegacy()) {
-      stopMomentum();
-      legacyAccumulator += normalized;
+    const direction = delta > 0 ? 1 : -1;
+    if (wheelDirection && wheelDirection !== direction) wheelAccumulator = 0;
+    wheelDirection = direction;
 
-      if (!legacyLocked && Math.abs(legacyAccumulator) >= 28) {
-        const direction = legacyAccumulator > 0 ? 1 : -1;
-        legacyAccumulator = 0;
-        legacyLocked = true;
-        legacyStep(direction);
-      }
+    resetGestureSoon();
+    if (gestureConsumed || animating) return;
 
-      resetLegacyWheelSoon();
-      return;
-    }
+    wheelAccumulator += delta;
+    if (Math.abs(wheelAccumulator) < wheelThreshold) return;
 
-    legacyAccumulator = 0;
-    legacyLocked = false;
-    addWheelImpulse(normalized);
+    gestureConsumed = true;
+    wheelAccumulator = 0;
+    go(direction);
   }, { passive: false, capture: true });
 
-  window.addEventListener('mousedown', (event) => {
-    if (event.button === 1) stopMomentum();
-  }, { capture: true });
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const button = target?.closest('button');
+    if (!button) return;
 
-  window.addEventListener('scroll', () => {
-    if (!frame) position = window.scrollY;
-  }, { passive: true });
+    if (button === prevButton || button === nextButton || button === restartButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (animating) return;
+
+      if (button === restartButton) {
+        rebuildCheckpoints();
+        const first = checkpoints[0];
+        if (first) animateTo(first.y, 'smooth');
+        return;
+      }
+
+      go(button === nextButton ? 1 : -1);
+    }
+  }, true);
+
+  document.addEventListener('keydown', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest('input, textarea, select, button, a')) return;
+    if (event.repeat || animating) return;
+
+    if (['ArrowDown', 'ArrowRight', 'PageDown'].includes(event.key)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      go(1);
+    } else if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(event.key)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      go(-1);
+    }
+  }, true);
 
   window.addEventListener('resize', () => {
-    stopMomentum();
-    position = clamp(window.scrollY, 0, maximumScroll());
+    stopAnimation();
+    rebuildCheckpoints();
   });
+
+  window.addEventListener('mousedown', (event) => {
+    if (event.button === 1) stopAnimation();
+  }, { capture: true });
+
+  rebuildCheckpoints();
+  window.checkpointScroll = {
+    next: () => go(1),
+    previous: () => go(-1),
+    rebuild: rebuildCheckpoints
+  };
 })();
