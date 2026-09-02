@@ -6,6 +6,7 @@ import re
 import time
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import urlparse
 
 PORTAL_URL = "https://syllabus.apu.ac.jp/syllabus/s/?language=en_US"
 DIRECT_RE = re.compile(r'https?://syllabus\.apu\.ac\.jp/syllabus/s/a-syllabus/[A-Za-z0-9]+/(20\d{2})(\d{4,6})(?:\?[^\"\'< >\s]*)?'.replace('< >','<>'))
@@ -44,6 +45,12 @@ def _save_mapping(path: Path, mapping: dict[str, str]) -> None:
 
 
 def _deep_elements(driver, selector: str):
+    """Return elements matching selector across open Shadow DOM roots.
+
+    Salesforce Experience Cloud / Lightning frequently renders the visible controls
+    inside nested shadow roots, where Selenium's normal find_elements() cannot see
+    them. execute_script can return those DOM nodes as WebElements.
+    """
     try:
         return driver.execute_script("""
             const selector = arguments[0];
@@ -154,6 +161,10 @@ def _find_input(driver, mode: str):
     scored = [(score, el) for score, el in candidates if score > 0]
     if scored:
         return max(scored, key=lambda x: x[0])[1]
+
+    # Salesforce occasionally labels the one general search box only as
+    # "Keyword". Use it only when there is a single safe text box rather than
+    # guessing among login/contact fields.
     safe = []
     for el, ctx in raw:
         t = ctx.lower()
@@ -181,15 +192,27 @@ def _wait_for_input(driver, timeout: float = 10.0):
 
 
 def _ensure_search(driver) -> None:
+    # Experience Cloud can take several seconds after document.readyState=complete
+    # before Lightning mounts the actual controls.
     if _wait_for_input(driver, 5.0):
         return
+
     click_groups = [
         ["Syllabus Search", "Search Syllabus", "シラバス検索"],
-        ["Search by Subject/Class", "Search from Subject/Class", "Search by Subject", "Search from Subject", "Search by Course", "Search by Class", "Subject/Class", "Course/Class", "科目・クラスから検索", "科目から検索", "講義から検索"],
+        [
+            "Search by Subject/Class", "Search from Subject/Class",
+            "Search by Subject", "Search from Subject",
+            "Search by Course", "Search by Class",
+            "Subject/Class", "Course/Class",
+            "科目・クラスから検索", "科目から検索", "講義から検索",
+        ],
     ]
     for words in click_groups:
         if _click_text(driver, words) and _wait_for_input(driver, 8.0):
             return
+
+    # One more passive wait covers slow Salesforce hydration even when the
+    # navigation item was already selected on entry.
     _wait_for_input(driver, 5.0)
 
 
@@ -201,6 +224,13 @@ def _field_value(field) -> str:
 
 
 def _replace_input_value(driver, field, value: str) -> bool:
+    """Replace a Lightning-backed input and verify the browser sees the new value.
+
+    Selenium ``clear()`` can visually empty a Salesforce input while leaving the
+    component's internal value unchanged. Keyboard replacement fires the same
+    events as a user. The JS fallback uses the native value setter and emits
+    composed input/change events for Lightning components.
+    """
     value = str(value)
     try:
         from selenium.webdriver.common.keys import Keys
@@ -213,6 +243,7 @@ def _replace_input_value(driver, field, value: str) -> bool:
             return True
     except Exception:
         pass
+
     try:
         driver.execute_script("""
             const el = arguments[0];
@@ -237,8 +268,13 @@ def _submit_search(driver, value: str, mode: str) -> bool:
     field = _find_input(driver, mode)
     if field is None and mode == "code":
         field = _find_input(driver, "subject")
-    if field is None or not _replace_input_value(driver, field, value):
+    if field is None:
         return False
+    if not _replace_input_value(driver, field, value):
+        return False
+
+    # Prefer Enter on the exact field we just edited. This avoids clicking a
+    # different generic Search button elsewhere in a Lightning page.
     submitted = False
     try:
         from selenium.webdriver.common.keys import Keys
@@ -250,7 +286,10 @@ def _submit_search(driver, value: str, mode: str) -> bool:
         submitted = _click_text(driver, ["Search Syllabus", "Search", "シラバスを検索", "検索"])
     if not submitted:
         return False
+
     time.sleep(0.8)
+    # A controlled Lightning input sometimes restores its previous value after
+    # submit. Treat that as a failed search rather than silently repeating it.
     current = _find_input(driver, mode) or (_find_input(driver, "subject") if mode == "code" else None)
     if current is not None:
         actual = _field_value(current)
@@ -261,6 +300,8 @@ def _submit_search(driver, value: str, mode: str) -> bool:
 
 def _page_links(driver, wanted: set[str], year: int) -> dict[str, str]:
     collected: dict[str, str] = {}
+    # Search normal DOM and nested Lightning shadow roots. page_source alone
+    # does not serialize shadow-root contents.
     for a in _deep_elements(driver, "a[href*='/a-syllabus/']"):
         try:
             href = a.get_attribute("href") or ""
@@ -302,7 +343,11 @@ def _diagnostic_controls(driver) -> dict[str, Any]:
             })
         except Exception:
             continue
-    return {"url": driver.current_url, "title": driver.title, "controls": controls}
+    return {
+        "url": driver.current_url,
+        "title": driver.title,
+        "controls": controls,
+    }
 
 
 def _make_driver(headless: bool = False):
@@ -335,11 +380,13 @@ def sync_links(*, sections: list[dict[str, Any]], year: int, mapping_path: Path,
         code = str(s.get("classCode", "")).strip()
         if name and code:
             subjects.setdefault(name, set()).add(code)
+
     mapping = _load_mapping(mapping_path)
     already = {key.split(":", 1)[1] for key in mapping if key.startswith(f"{year}:")}
     missing = wanted - already
     if not missing:
         return {"found": len(wanted), "total": len(wanted), "missing": [], "searchedSubjects": 0, "complete": True}
+
     driver = _make_driver(headless=headless)
     searched = 0
     try:
@@ -347,9 +394,19 @@ def sync_links(*, sections: list[dict[str, Any]], year: int, mapping_path: Path,
         time.sleep(2.5)
         _ensure_search(driver)
         if not (_find_input(driver, "subject") or _find_input(driver, "code")):
-            raise RuntimeError("APU syllabus search controls could not be detected, including inside Salesforce Shadow DOM. Diagnostic files were saved under data/syllabus_sync_debug/.")
+            raise RuntimeError(
+                "APU syllabus search controls could not be detected, including inside Salesforce Shadow DOM. "
+                "Diagnostic files were saved under data/syllabus_sync_debug/."
+            )
+
+        # Search by Class code first. It is slower than subject batching, but it
+        # is deterministic and avoids Salesforce retaining the first subject
+        # query in a controlled Lightning input. Every successful query targets
+        # exactly one enrollment option.
         for code in sorted(missing):
             if not _submit_search(driver, code, "code"):
+                # Re-open the public search once and retry. This also recovers
+                # when the result page replaced/unmounted the previous input.
                 driver.get(PORTAL_URL)
                 _ensure_search(driver)
                 if not _submit_search(driver, code, "code"):
@@ -361,6 +418,10 @@ def sync_links(*, sections: list[dict[str, Any]], year: int, mapping_path: Path,
                 _save_mapping(mapping_path, mapping)
             if not missing:
                 break
+
+        # Only unresolved Class codes fall back to subject-name search. This is
+        # useful for unusual language classes whose public search may not accept
+        # the numeric code, while keeping the normal path unambiguous.
         for name, codes in sorted(subjects.items()):
             relevant = codes & missing
             if not relevant:
@@ -375,16 +436,27 @@ def sync_links(*, sections: list[dict[str, Any]], year: int, mapping_path: Path,
                 _save_mapping(mapping_path, mapping)
             if not missing:
                 break
+
         final = _load_mapping(mapping_path)
         resolved = {key.split(":", 1)[1] for key in final if key.startswith(f"{year}:")} & wanted
         missing_final = sorted(wanted - resolved)
-        return {"found": len(resolved), "total": len(wanted), "missing": missing_final, "searchedSubjects": searched, "complete": not missing_final}
+        return {
+            "found": len(resolved),
+            "total": len(wanted),
+            "missing": missing_final,
+            "searchedSubjects": searched,
+            "complete": not missing_final,
+        }
     except Exception:
+        # Keep a local diagnostic so a future APU UI change can be fixed without guessing.
         try:
             debug_dir = mapping_path.parent / "syllabus_sync_debug"
             debug_dir.mkdir(parents=True, exist_ok=True)
             (debug_dir / "page.html").write_text(driver.page_source, encoding="utf-8")
-            (debug_dir / "controls.json").write_text(json.dumps(_diagnostic_controls(driver), ensure_ascii=False, indent=2), encoding="utf-8")
+            (debug_dir / "controls.json").write_text(
+                json.dumps(_diagnostic_controls(driver), ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
             driver.save_screenshot(str(debug_dir / "page.png"))
         except Exception:
             pass
