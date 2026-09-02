@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>APU Schedule Builder</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><div class="logo">APU</div><div><h1>Schedule Builder</h1><small><span id="datasetTerm">학기 확인 중</span> · 2023 Curriculum</small></div></div>
+    <div class="top-actions">
+      <button class="top-button" id="profileButton">APM · 5 Semester</button>
+      <span class="top-chip" id="dataBadge">데이터 확인 중</span>
+      <button class="top-button theme-button" id="themeButton" aria-label="화면 테마 전환"><span class="theme-dot"></span><span id="themeText">라이트 모드</span></button><button class="top-button" id="settingsButton">설정</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="sidebar">
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" data-tab="FIND">수업 찾기</button>
+        <button class="sidebar-tab" data-tab="MY">내 수업 <span id="myCount">0</span></button>
+      </div>
+      <div class="sidebar-body" id="findPane">
+        <div class="search-wrap">
+          <input id="search" class="search" type="search" placeholder="과목명, 교수, Class code 검색">
+          <div id="slotFilter" class="slot-filter hidden"><span id="slotFilterText"></span><button id="clearSlotFilter">전체 보기</button></div>
+          <div class="filters">
+            <select id="termFilter"><option value="">모든 기간</option><option value="SEMESTER">Semester</option><option value="Q1">1Q</option><option value="Q2">2Q</option></select>
+            <select id="languageFilter"><option value="">모든 언어</option></select>
+          </div>
+          <div class="filter-line"><span id="eligibilityText">Semester 기준 수업만 표시</span><label><input id="showUnavailable" type="checkbox">Semester 제한도 보기</label></div>
+        </div>
+        <div class="list-summary" id="listSummary">데이터를 불러오는 중...</div>
+        <div class="course-list" id="courseList"><div class="empty">APU 데이터를 확인하고 있습니다.</div></div>
+      </div>
+      <div class="sidebar-body hidden" id="myPane">
+        <div class="my-list" id="myList"></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="main-head">
+        <div class="plan-title">
+          <h2 id="planHeading">내 시간표</h2>
+          <div class="quarter-switch"><button class="active" data-quarter="Q1">1Q</button><button data-quarter="Q2">2Q</button></div>
+        </div>
+        <div class="plan-metrics">
+          <div class="metric"><strong id="creditMetric">0 / 20</strong><span>학점</span></div>
+          <div class="metric"><strong id="daysMetric">0일</strong><span>등교일</span></div>
+          <div class="metric"><strong id="gapMetric">0</strong><span>빈 교시</span></div>
+          <div class="metric"><strong id="classMetric">0</strong><span>선택 Class</span></div>
+        </div>
+        <div class="main-actions">
+          <button class="secondary-button" id="clearPlanButton">선택 초기화</button>
+          <button class="primary-button" id="fillButton">빈 학점 자동 채우기</button>
+        </div>
+      </div>
+      <div class="calendar-area">
+        <div class="calendar-card">
+          <div class="calendar-help"><span><strong>빈 칸을 클릭</strong>해서 그 시간의 수업을 찾거나 수업 불가 시간으로 지정하세요.</span><span id="quarterHelp">1Q 시간표</span></div>
+          <div id="calendar"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<aside class="drawer" id="settingsDrawer">
+  <div class="drawer-head"><strong>설정</strong><button class="icon-button" data-close-drawer>×</button></div>
+  <div class="drawer-body">
+    <section class="drawer-section">
+      <h3>학생 정보</h3>
+      <div class="drawer-row"><div class="drawer-field"><label>College</label><select id="college"><option>APM</option><option>APS</option><option>ST</option></select></div><div class="drawer-field"><label>현재 Semester</label><select id="semesterLevel"></select></div></div>
+      <div class="drawer-row"><div class="drawer-field"><label>Enrollment track</label><select id="track"><option value="E">English Basis</option><option value="JST">Japanese Standard</option><option value="JAT">Japanese Advanced</option></select></div><div class="drawer-field"><label>목표 학점</label><input id="targetCredits" type="number" min="0" step="1" value="18"></div></div>
+      <label class="check-line"><input id="accelerated" type="checkbox"> Accelerated Graduation</label>
+    </section>
+    <section class="drawer-section">
+      <h3>University-registered / 확정 수업</h3>
+      <div class="fixed-add"><input id="universityCode" type="text" placeholder="Class code"><button class="primary-button" id="addUniversityButton">추가</button></div>
+      <div class="fixed-list" id="universityList"></div>
+      <div class="danger-note" style="margin-top:9px">대학이 배정한 언어·필수 수업은 여기 넣으세요. 이 수업은 시간표에서 제거하거나 막을 수 없습니다.</div>
+    </section>
+    <section class="drawer-section">
+      <h3>APU 공식 데이터</h3>
+      <div class="status-box" id="loadStatus">확인 중...</div>
+      <div class="drawer-actions"><button class="add" id="loadButton">공식 데이터 불러오기</button><button id="refreshButton">새로 받기</button></div>
+      <div class="status-box" id="syllabusSyncStatus" style="margin-top:10px">실라버스 링크: 데이터 로드 후 확인</div>
+      <div class="drawer-actions"><button class="add" id="syncSyllabusButton">실라버스 링크 전체 동기화</button></div>
+      <div class="drawer-help">공개 APU 실라버스 검색을 Chrome/Edge로 열어 현재 학기의 Class direct link를 수집합니다. 이미 확보한 링크는 건너뜁니다.</div>
+      <div class="drawer-help">Timetable 2026-09-01 · Subject List 2026-03-13</div>
+    </section>
+  </div>
+</aside>
+
+<aside class="drawer" id="detailDrawer">
+  <div class="drawer-head"><strong>Class 상세</strong><button class="icon-button" data-close-drawer>×</button></div>
+  <div class="drawer-body" id="detailBody"></div>
+</aside>
+
+<div class="suggestions hidden" id="suggestions"><div class="suggest-head"><div><strong>자동으로 채울 수 있는 시간표</strong><span id="suggestText"></span></div><button class="icon-button" id="closeSuggestions">×</button></div><div class="suggest-list" id="suggestList"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
