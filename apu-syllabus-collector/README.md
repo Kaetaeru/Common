@@ -1,4 +1,4 @@
-# APU Syllabus Collector V1.2
+# APU Syllabus Collector V1.3
 
 APU Schedule Builder와 분리된 **독립 자동 수집 유틸리티**입니다.
 
@@ -50,3 +50,12 @@ py -3 -m unittest discover -s tests -v
 ```
 
 실제 APU Salesforce 페이지의 DOM은 외부 서비스이므로, 단위 테스트와 별도로 Windows Chrome/Edge에서 실제 수집 로그를 확인해야 최종 통합 검증이 됩니다.
+
+## V1.3 parallel collection
+
+- 자동 수집은 최대 **10개의 독립 Chrome/Edge browser worker**를 동시에 실행합니다.
+- 모든 worker는 같은 Class queue에서 다음 항목을 가져가므로 느린 Class 때문에 한 worker가 막혀도 다른 worker는 계속 진행합니다.
+- 검색은 기존과 동일하게 **Class Code 전용 입력 + 실제 Search 버튼**만 사용합니다. Subject 이름 검색은 하지 않습니다.
+- 각 worker는 자기 browser session을 사용하지만 `data/syllabus_links.json`, 실패 상태, state 저장은 lock으로 직렬화하여 서로 덮어쓰지 않습니다.
+- Output Log에는 `[W01]`~`[W10]` worker 번호가 표시되고 상단 상태에는 현재 활성 worker 수가 표시됩니다.
+- 중지/일시정지는 10개 worker 전체에 적용됩니다. 중지는 각 worker가 현재 browser operation을 빠져나오는 즉시 종료됩니다.
