@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import tempfile
+import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -49,6 +52,28 @@ def load_mapping(path: Path) -> dict[str, str]:
 
 def save_mapping(path: Path, mapping: dict[str, str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_suffix(path.suffix + ".tmp")
-    temp.write_text(json.dumps(dict(sorted(mapping.items())), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    temp.replace(path)
+    payload = json.dumps(dict(sorted(mapping.items())), ensure_ascii=False, indent=2) + "\n"
+    last_error: OSError | None = None
+
+    for attempt in range(6):
+        temp_name = None
+        try:
+            fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+                handle.write(payload)
+            os.replace(temp_name, path)
+            return
+        except OSError as exc:
+            last_error = exc
+            if temp_name:
+                try:
+                    os.unlink(temp_name)
+                except OSError:
+                    pass
+            retryable = isinstance(exc, PermissionError) or getattr(exc, "winerror", None) in {5, 32, 33}
+            if not retryable or attempt == 5:
+                raise
+            time.sleep(0.05 * (2 ** attempt))
+
+    if last_error is not None:
+        raise last_error
