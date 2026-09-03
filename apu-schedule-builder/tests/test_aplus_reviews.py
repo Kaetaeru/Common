@@ -1,10 +1,6 @@
 import unittest
 from unittest.mock import patch
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
 import aplus_reviews
 
 
@@ -45,6 +41,7 @@ class AplusReviewTests(unittest.TestCase):
         self.assertEqual(review["rating"], 4.3)
         self.assertEqual(review["reviewCount"], 3)
         self.assertEqual(review["recommendPercent"], 100)
+        self.assertEqual(review["sourceUrl"], "https://apluscoursereview.com/subject/110")
 
     def test_name_order_is_normalized_but_different_instructor_is_not_matched(self):
         index = aplus_reviews.build_review_index(SUBJECTS, COURSES)
