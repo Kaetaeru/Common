@@ -8,7 +8,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import app_backend as _backend
-from syllabus_mapping import load_verified_mapping, mapping_fingerprint
+from aplus_reviews import enrich_schedule_data
+from syllabus_mapping import load_verified_mapping, mapping_fingerprint, parse_direct_syllabus_url
 from app_backend import *  # noqa: F401,F403 - preserve the public API used by tests and scripts
 
 
@@ -107,6 +108,28 @@ _backend.load_syllabus_link_overrides = _load_syllabus_link_overrides_from_repos
 load_syllabus_link_overrides = _load_syllabus_link_overrides_from_repository
 
 
+def _apply_verified_syllabus_links(sections, academic_year) -> None:
+    overrides = _load_syllabus_link_overrides_from_repository()
+    for section in sections:
+        class_code = _backend.code_text(section.get("classCode"))
+        direct = _backend.clean_text(section.get("syllabusUrl"))
+        if direct and _backend.is_direct_syllabus_url(direct, class_code, academic_year):
+            continue
+        section.pop("syllabusUrl", None)
+        if academic_year is None:
+            continue
+        override = overrides.get(f"{academic_year}:{class_code}", "")
+        parsed = parse_direct_syllabus_url(override)
+        # The repository reader already validated the key. For verified grouped
+        # aliases, only the URL year must equal the active academic year.
+        if parsed and parsed[0] == int(academic_year):
+            section["syllabusUrl"] = override
+
+
+_backend.apply_syllabus_links = _apply_verified_syllabus_links
+apply_syllabus_links = _apply_verified_syllabus_links
+
+
 def _load_or_build_data_with_mapping_cache(college: str, allow_download: bool = True) -> dict:
     college = college.upper()
     fingerprint = mapping_fingerprint(_backend.DATA_DIR)
@@ -133,7 +156,10 @@ def _load_or_build_data_with_mapping_cache(college: str, allow_download: bool = 
         cached.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     else:
         data["syllabusMappingCacheVerified"] = False
-    return data
+
+    # A+ is optional live enrichment. It is applied after the APU cache write so
+    # ratings never become stale data inside the normalized timetable cache.
+    return enrich_schedule_data(data)
 
 
 _backend.load_or_build_data = _load_or_build_data_with_mapping_cache
