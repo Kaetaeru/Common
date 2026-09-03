@@ -4,6 +4,16 @@ import re
 import time
 
 import syllabus_sync as legacy
+from mapping import parse_direct_url
+
+
+class SearchURL(str):
+    """Direct syllabus URL with transient evidence from a grouped result anchor."""
+
+    def __new__(cls, value: str, group_codes=()):
+        obj = str.__new__(cls, value)
+        obj.group_codes = tuple(str(code) for code in group_codes)
+        return obj
 
 
 def _own_text(driver, element) -> str:
@@ -84,6 +94,31 @@ def current_direct_url(driver, code: str, year: int) -> str | None:
     except Exception:
         return None
     return found.get(f"{year}:{code}")
+
+
+def _group_codes(text: str) -> tuple[str, ...]:
+    # APU grouped result labels use `12347:... §12348:...`. Accept the
+    # backslash-escaped colon form too because copied links may contain it.
+    return tuple(dict.fromkeys(re.findall(r"(?<!\d)(\d{4,6})\s*\\?:", str(text or ""))))
+
+
+def grouped_anchor_url(driver, code: str, year: int) -> SearchURL | None:
+    target = str(code)
+    for element in legacy._deep_elements(driver, "a[href*='/a-syllabus/']"):
+        try:
+            if not element.is_displayed():
+                continue
+            href = str(element.get_attribute("href") or "").strip()
+            parsed = parse_direct_url(href)
+            if not parsed or parsed[0] != int(year):
+                continue
+            canonical = parsed[1]
+            codes = _group_codes(_own_text(driver, element))
+            if len(codes) >= 2 and target in codes and canonical in codes:
+                return SearchURL(href, codes)
+        except Exception:
+            continue
+    return None
 
 
 def _window_handles(driver) -> list[str]:
@@ -178,6 +213,9 @@ def open_result_for_code(driver, code: str, year: int, timeout: float = 4.0) -> 
         links = legacy._page_links(driver, {str(code)}, year)
         if links:
             return links.get(f"{year}:{code}")
+        grouped = grouped_anchor_url(driver, code, year)
+        if grouped:
+            return grouped
 
         candidates = []
         for element in legacy._deep_elements(driver, selector):
