@@ -17,7 +17,7 @@ MANAGER = CollectionManager(ROOT)
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "APUSyllabusCollector/1.3"
+    server_version = "APUSyllabusCollector/1.4"
     def log_message(self, format, *args): print("[collector]", format % args)
     def send_json(self, payload, status=200):
         body=json.dumps(payload, ensure_ascii=False).encode(); self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8"); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body)
@@ -41,8 +41,8 @@ class Handler(BaseHTTPRequestHandler):
             payload=self.read_json(); college=str(payload.get("college") or MANAGER.college or "APM").upper()
             if parsed.path=="/api/load-data":
                 data=MANAGER.ensure_dataset(college, refresh=bool(payload.get("refresh",False))); self.send_json({"ok":True,"term":data["term"],"classes":len(data["classes"]),"status":MANAGER.status(college)}); return
-            if parsed.path=="/api/start": MANAGER.start(college=college, headless=bool(payload.get("headless",False))); self.send_json({"ok":True}); return
-            if parsed.path=="/api/retry-failed": MANAGER.start(college=college, headless=bool(payload.get("headless",False)), retry_failed_only=True); self.send_json({"ok":True}); return
+            if parsed.path=="/api/start": MANAGER.start(college=college, headless=bool(payload.get("headless",False)), worker_count=payload.get("workerCount")); self.send_json({"ok":True}); return
+            if parsed.path=="/api/retry-failed": MANAGER.start(college=college, headless=bool(payload.get("headless",False)), retry_failed_only=True, worker_count=payload.get("workerCount")); self.send_json({"ok":True}); return
             if parsed.path=="/api/pause": MANAGER.pause(); self.send_json({"ok":True}); return
             if parsed.path=="/api/resume": MANAGER.resume(); self.send_json({"ok":True}); return
             if parsed.path=="/api/stop": MANAGER.stop(); self.send_json({"ok":True}); return
