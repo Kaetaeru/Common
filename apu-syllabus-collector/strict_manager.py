@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import queue
 import threading
 import time
 
@@ -10,16 +9,74 @@ from strict_search import current_direct_url, open_result_for_code, submit_class
 from syllabus_sync import PORTAL_URL, _click_text, _make_driver, _page_links
 
 
-WORKER_COUNT = 10
+DEFAULT_WORKER_COUNT = 5
+MAX_WORKER_COUNT = 10
+BROWSER_START_ATTEMPTS = 3
+BROWSER_RESTARTS_PER_CLASS = 2
 
 
 class CollectionManager(BaseCollectionManager):
-    """Runtime collector with strict Class-code-only search and 10 browser workers."""
+    """Runtime collector with strict Class-code search and fixed browser partitions."""
 
     def __init__(self, root) -> None:
         super().__init__(root)
-        self.worker_count = WORKER_COUNT
+        self.worker_count = DEFAULT_WORKER_COUNT
         self.active_workers: dict[int, dict] = {}
+
+    @staticmethod
+    def _normalize_worker_count(value) -> int:
+        try:
+            count = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Browser count must be an integer from 1 to 10.") from exc
+        if not 1 <= count <= MAX_WORKER_COUNT:
+            raise ValueError("Browser count must be from 1 to 10.")
+        return count
+
+    def start(
+        self,
+        *,
+        college: str,
+        headless: bool = False,
+        refresh_data: bool = False,
+        retry_failed_only: bool = False,
+        worker_count: int | None = None,
+    ) -> None:
+        count = self._normalize_worker_count(worker_count if worker_count is not None else self.worker_count)
+        with self.lock:
+            if self.running:
+                raise RuntimeError("Collector is already running.")
+            self.worker_count = count
+            self.running, self.paused, self.last_error = True, False, ""
+            self.stop_event.clear()
+            self.pause_event.set()
+        self.thread = threading.Thread(
+            target=self._run,
+            kwargs={
+                "college": college.upper(),
+                "headless": headless,
+                "refresh_data": refresh_data,
+                "retry_failed_only": retry_failed_only,
+            },
+            daemon=True,
+        )
+        self.thread.start()
+
+    @staticmethod
+    def _partition_items(items: list[dict], worker_total: int) -> list[list[tuple[int, dict]]]:
+        """Split work into balanced, contiguous, non-overlapping worker parts."""
+        if not items or worker_total <= 0:
+            return []
+        worker_total = min(worker_total, len(items))
+        base, extra = divmod(len(items), worker_total)
+        parts: list[list[tuple[int, dict]]] = []
+        offset = 0
+        for worker_index in range(worker_total):
+            size = base + (1 if worker_index < extra else 0)
+            part = [(index + 1, items[index]) for index in range(offset, offset + size)]
+            parts.append(part)
+            offset += size
+        return parts
 
     def _collect_wanted(self, driver, *, year: int, code: str, max_pages: int) -> str | None:
         for _ in range(max_pages):
@@ -54,31 +111,60 @@ class CollectionManager(BaseCollectionManager):
                 return url, "class-code"
         return None, "class-code-result-not-found" if submitted else "class-code-search-not-triggered"
 
-    def _browser_worker(self, worker_id: int, work: queue.Queue, *, year: int, mapping: dict[str, str], headless: bool) -> None:
+    def _open_browser(self, worker_id: int, *, headless: bool, restarted: bool = False):
+        label = f"W{worker_id:02d}"
+        last_error: Exception | None = None
+        for attempt in range(1, BROWSER_START_ATTEMPTS + 1):
+            driver = None
+            try:
+                driver = _make_driver(headless=headless)
+                driver.get(PORTAL_URL)
+                time.sleep(0.8)
+                action = "restarted" if restarted else "started"
+                self.log("ok", f"[{label}] Browser {action} ({'headless' if headless else 'visible'})")
+                return driver
+            except Exception as exc:
+                last_error = exc
+                if driver:
+                    try:
+                        driver.quit()
+                    except Exception:
+                        pass
+                self.log("warn", f"[{label}] Browser start failed ({attempt}/{BROWSER_START_ATTEMPTS}): {exc}")
+                if attempt < BROWSER_START_ATTEMPTS:
+                    time.sleep(1.0)
+        raise RuntimeError(f"Browser could not start after {BROWSER_START_ATTEMPTS} attempts: {last_error}")
+
+    def _browser_worker(
+        self,
+        worker_id: int,
+        part: list[tuple[int, dict]],
+        *,
+        queue_total: int,
+        year: int,
+        mapping: dict[str, str],
+        headless: bool,
+    ) -> None:
         label = f"W{worker_id:02d}"
         driver = None
         try:
-            # Avoid asking Selenium Manager / Chrome to initialize ten processes in the exact same millisecond.
-            time.sleep((worker_id - 1) * 0.15)
-            driver = _make_driver(headless=headless)
-            driver.get(PORTAL_URL)
-            time.sleep(0.8)
-            self.log("ok", f"[{label}] Browser started ({'headless' if headless else 'visible'})")
+            time.sleep((worker_id - 1) * 0.2)
+            driver = self._open_browser(worker_id, headless=headless)
 
-            while not self.stop_event.is_set():
-                self.pause_event.wait()
+            for part_index, (global_index, item) in enumerate(part, 1):
                 if self.stop_event.is_set():
                     break
-                try:
-                    index, item, queue_total = work.get_nowait()
-                except queue.Empty:
+                self.pause_event.wait()
+                if self.stop_event.is_set():
                     break
 
                 code, subject = item["classCode"], item["name"]
                 current = {
                     "worker": label,
-                    "index": index,
+                    "index": global_index,
                     "queueTotal": queue_total,
+                    "partIndex": part_index,
+                    "partTotal": len(part),
                     "classCode": code,
                     "name": subject,
                 }
@@ -86,17 +172,39 @@ class CollectionManager(BaseCollectionManager):
                     self.active_workers[worker_id] = current
                     self.current = current
                     self._save_state()
-                self.log("info", f"[{label}] [{index}/{queue_total}] Class {code} · {subject}")
+                self.log("info", f"[{label} P{part_index}/{len(part)}] [{global_index}/{queue_total}] Class {code} · {subject}")
 
-                try:
-                    url, method = self._search(driver, year=year, code=code, worker=label)
-                except Exception as exc:
-                    url, method = None, "exception"
-                    self.log("error", f"[{label}] Class {code}: {exc}")
+                url = None
+                method = "exception"
+                browser_restarts = 0
+                while not self.stop_event.is_set():
                     try:
-                        driver.get(PORTAL_URL)
-                    except Exception:
-                        pass
+                        url, method = self._search(driver, year=year, code=code, worker=label)
+                        break
+                    except Exception as exc:
+                        browser_restarts += 1
+                        self.log("error", f"[{label}] Class {code}: browser session error: {exc}")
+                        if driver:
+                            try:
+                                driver.quit()
+                            except Exception:
+                                pass
+                        driver = None
+                        if browser_restarts > BROWSER_RESTARTS_PER_CLASS:
+                            method = "browser-session-crashed"
+                            self.log("error", f"[{label}] Class {code}: browser restart limit reached")
+                            break
+                        self.log(
+                            "warn",
+                            f"[{label}] Restarting browser and retrying the same Class {code} "
+                            f"({browser_restarts}/{BROWSER_RESTARTS_PER_CLASS})",
+                        )
+                        try:
+                            driver = self._open_browser(worker_id, headless=headless, restarted=True)
+                        except Exception as restart_exc:
+                            method = "browser-restart-failed"
+                            self.log("error", f"[{label}] Browser restart failed: {restart_exc}")
+                            break
 
                 key = f"{year}:{code}"
                 with self.lock:
@@ -105,12 +213,17 @@ class CollectionManager(BaseCollectionManager):
                         save_mapping(self.output_file, mapping)
                         self.failed.pop(key, None)
                         self.log("ok", f"[{label}] Class {code}: saved ({method})")
-                    else:
+                    elif not self.stop_event.is_set():
                         self.failed[key] = method
                         self.log("error", f"[{label}] Class {code}: direct link not found ({method})")
                     self.active_workers.pop(worker_id, None)
                     self._save_state()
-                work.task_done()
+
+                if driver is None and not self.stop_event.is_set():
+                    remaining = len(part) - part_index
+                    if remaining:
+                        self.log("warn", f"[{label}] Worker stopped; {remaining} Class codes in its part remain pending")
+                    break
         except Exception as exc:
             self.log("error", f"[{label}] Browser worker failed: {exc}")
         finally:
@@ -137,21 +250,27 @@ class CollectionManager(BaseCollectionManager):
                 self.log("ok", "Nothing to collect")
                 return
 
-            work: queue.Queue = queue.Queue()
-            for index, item in enumerate(items, 1):
-                work.put((index, item, len(items)))
-
             worker_total = min(self.worker_count, len(items))
-            self.log("info", f"Launching {worker_total} parallel browser workers")
+            parts = self._partition_items(items, worker_total)
+            self.log("info", f"Launching {worker_total} fixed browser parts")
+            for worker_id, part in enumerate(parts, 1):
+                first, last = part[0][0], part[-1][0]
+                self.log("info", f"[W{worker_id:02d}] Assigned part {first}-{last} ({len(part)} Class codes)")
+
             workers = [
                 threading.Thread(
                     target=self._browser_worker,
-                    args=(worker_id, work),
-                    kwargs={"year": year, "mapping": mapping, "headless": headless},
+                    args=(worker_id, part),
+                    kwargs={
+                        "queue_total": len(items),
+                        "year": year,
+                        "mapping": mapping,
+                        "headless": headless,
+                    },
                     daemon=True,
                     name=f"apu-syllabus-{worker_id:02d}",
                 )
-                for worker_id in range(1, worker_total + 1)
+                for worker_id, part in enumerate(parts, 1)
             ]
             for worker in workers:
                 worker.start()
@@ -177,5 +296,6 @@ class CollectionManager(BaseCollectionManager):
         result = super().status(college)
         with self.lock:
             result["workerCount"] = self.worker_count
+            result["maxWorkerCount"] = MAX_WORKER_COUNT
             result["activeWorkers"] = [dict(value) for _, value in sorted(self.active_workers.items())]
         return result
