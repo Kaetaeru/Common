@@ -68,7 +68,7 @@ def _windows_download(url: str, destination: Path) -> None:
 
 def download_file(url: str, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 APU-Syllabus-Collector/1.0"})
+    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 APU-Syllabus-Collector/1.1"})
     try:
         with urllib.request.urlopen(request, timeout=40) as response:
             data = response.read()
