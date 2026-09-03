@@ -31,7 +31,21 @@ def parse_direct_url(url: Any) -> tuple[int, str] | None:
 
 
 def valid_direct_url(url: Any, year: int, class_code: str) -> bool:
-    return parse_direct_url(url) == (int(year), str(class_code))
+    parsed = parse_direct_url(url)
+    if parsed == (int(year), str(class_code)):
+        return True
+
+    # SearchURL instances from strict_search carry grouped-result evidence only
+    # for the current process. Require the target and canonical Class codes to
+    # both be present in the same APU result anchor before accepting a mismatch.
+    group_codes = tuple(str(code) for code in getattr(url, "group_codes", ()) or ())
+    return bool(
+        parsed
+        and parsed[0] == int(year)
+        and len(group_codes) >= 2
+        and str(class_code) in group_codes
+        and parsed[1] in group_codes
+    )
 
 
 def load_mapping(path: Path) -> dict[str, str]:
@@ -41,18 +55,50 @@ def load_mapping(path: Path) -> dict[str, str]:
         return {}
     if not isinstance(raw, dict):
         return {}
-    result: dict[str, str] = {}
+
+    candidates: dict[str, tuple[str, tuple[int, str]]] = {}
+    exact: dict[str, str] = {}
     for key, value in raw.items():
-        match = KEY_RE.fullmatch(str(key))
+        key_text = str(key)
+        match = KEY_RE.fullmatch(key_text)
         url = str(value or "").strip()
-        if match and valid_direct_url(url, int(match.group(1)), match.group(2)):
-            result[str(key)] = url
+        parsed = parse_direct_url(url)
+        if not match or not parsed or parsed[0] != int(match.group(1)):
+            continue
+        candidates[key_text] = (url, parsed)
+        if parsed[1] == match.group(2):
+            exact[key_text] = url
+
+    result: dict[str, str] = dict(exact)
+    for key, (url, parsed) in candidates.items():
+        if key in result:
+            continue
+        canonical_key = f"{parsed[0]}:{parsed[1]}"
+        if exact.get(canonical_key) == url:
+            result[key] = url
     return result
 
 
 def save_mapping(path: Path, mapping: dict[str, str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(dict(sorted(mapping.items())), ensure_ascii=False, indent=2) + "\n"
+
+    # Persist the canonical key beside a verified grouped alias. That gives the
+    # JSON enough structure for load_mapping() to distinguish an intentional
+    # grouped syllabus from an arbitrary mismatched key/URL pair after restart.
+    normalized = dict(mapping)
+    for key, value in list(mapping.items()):
+        match = KEY_RE.fullmatch(str(key))
+        parsed = parse_direct_url(value)
+        group_codes = tuple(str(code) for code in getattr(value, "group_codes", ()) or ())
+        if not match or not parsed or len(group_codes) < 2:
+            continue
+        target = match.group(2)
+        if parsed[0] != int(match.group(1)) or target not in group_codes or parsed[1] not in group_codes:
+            continue
+        normalized.setdefault(f"{parsed[0]}:{parsed[1]}", str(value))
+        normalized[str(key)] = str(value)
+
+    payload = json.dumps(dict(sorted(normalized.items())), ensure_ascii=False, indent=2) + "\n"
     last_error: OSError | None = None
 
     for attempt in range(6):
