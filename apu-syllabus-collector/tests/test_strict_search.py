@@ -54,8 +54,8 @@ class StrictSearchTests(unittest.TestCase):
     def test_runtime_manager_search_uses_only_class_code(self):
         mgr = strict_manager.CollectionManager.__new__(strict_manager.CollectionManager)
         mgr.logs = []
-        mgr.lock = __import__("threading").RLock()
-        mgr.log_file = __import__("pathlib").Path("/nonexistent/collector.log")
+        mgr.lock = threading.RLock()
+        mgr.log_file = Path("/nonexistent/collector.log")
         calls = []
         class Driver:
             def get(self, url): calls.append(("get", url))
@@ -68,10 +68,19 @@ class StrictSearchTests(unittest.TestCase):
         self.assertEqual(method, "class-code-result-not-found")
         self.assertEqual([call for call in calls if call[0] == "code"], [("code", "10725"), ("code", "10725")])
 
-    def test_parallel_run_launches_ten_browsers_and_processes_each_class_once(self):
+    def test_worker_count_is_configurable_but_bounded(self):
+        self.assertEqual(strict_manager.CollectionManager._normalize_worker_count(1), 1)
+        self.assertEqual(strict_manager.CollectionManager._normalize_worker_count("10"), 10)
+        with self.assertRaises(ValueError):
+            strict_manager.CollectionManager._normalize_worker_count(0)
+        with self.assertRaises(ValueError):
+            strict_manager.CollectionManager._normalize_worker_count(11)
+
+    def test_partitioned_run_uses_configured_browsers_and_fixed_unique_parts(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             manager = strict_manager.CollectionManager(root)
+            manager.worker_count = 4
             classes = [
                 {"classCode": str(11000 + i), "name": f"Course {i}", "instructor": "", "term": "Semester"}
                 for i in range(12)
@@ -82,12 +91,11 @@ class StrictSearchTests(unittest.TestCase):
             seen_lock = threading.Lock()
 
             class Driver:
-                def get(self, _url): pass
                 def quit(self): pass
 
-            def make_driver(*, headless=False):
+            def open_browser(worker_id, *, headless=False, restarted=False):
                 driver = Driver()
-                drivers.append(driver)
+                drivers.append((worker_id, driver))
                 return driver
 
             def ensure_dataset(_college, refresh=False):
@@ -102,18 +110,55 @@ class StrictSearchTests(unittest.TestCase):
 
             manager.running = True
             with patch.object(manager, "ensure_dataset", side_effect=ensure_dataset), \
-                 patch.object(strict_manager, "_make_driver", side_effect=make_driver), \
+                 patch.object(manager, "_open_browser", side_effect=open_browser), \
                  patch.object(manager, "_search", side_effect=search), \
                  patch.object(strict_manager.time, "sleep"):
                 manager._run(college="APM", headless=False, refresh_data=False, retry_failed_only=False)
 
-            self.assertEqual(len(drivers), 10)
-            self.assertEqual(sorted(code for _, code in seen), sorted(item["classCode"] for item in classes))
+            self.assertEqual(len(drivers), 4)
+            by_worker = {}
+            for worker, code in seen:
+                by_worker.setdefault(worker, []).append(code)
+            self.assertEqual(by_worker["W01"], ["11000", "11001", "11002"])
+            self.assertEqual(by_worker["W02"], ["11003", "11004", "11005"])
+            self.assertEqual(by_worker["W03"], ["11006", "11007", "11008"])
+            self.assertEqual(by_worker["W04"], ["11009", "11010", "11011"])
             self.assertEqual(len({code for _, code in seen}), len(classes))
-            self.assertTrue(all(worker.startswith("W") for worker, _ in seen))
             self.assertEqual(len(mapping.load_mapping(root / "data" / "syllabus_links.json")), len(classes))
             self.assertFalse(manager.running)
             self.assertEqual(manager.active_workers, {})
+
+    def test_worker_restarts_browser_and_retries_same_class_after_session_crash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manager = strict_manager.CollectionManager(root)
+            item = {"classCode": "10121", "name": "Psychology", "instructor": "", "term": "Semester"}
+            url = "https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZABC/202610121?language=en_US"
+
+            class Driver:
+                def __init__(self): self.quit_calls = 0
+                def quit(self): self.quit_calls += 1
+
+            first = Driver()
+            second = Driver()
+            mapping_state = {}
+            with patch.object(manager, "_open_browser", side_effect=[first, second]) as open_browser, \
+                 patch.object(manager, "_search", side_effect=[RuntimeError("browser died"), (url, "class-code")]), \
+                 patch.object(strict_manager.time, "sleep"):
+                manager._browser_worker(
+                    1,
+                    [(1, item)],
+                    queue_total=1,
+                    year=2026,
+                    mapping=mapping_state,
+                    headless=False,
+                )
+
+            self.assertEqual(open_browser.call_count, 2)
+            self.assertGreaterEqual(first.quit_calls, 1)
+            self.assertGreaterEqual(second.quit_calls, 1)
+            self.assertEqual(mapping.load_mapping(root / "data" / "syllabus_links.json")["2026:10121"], url)
+            self.assertNotIn("2026:10121", manager.failed)
 
 
 if __name__ == "__main__":
