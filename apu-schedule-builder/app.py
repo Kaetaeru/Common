@@ -20,6 +20,7 @@ _original_do_GET = _backend.Handler.do_GET
 _original_solve_variant = _backend.solve_variant
 _STATIC_FILES = {
     "/style.css": ("style.css", "text/css; charset=utf-8"),
+    "/app-i18n.js": ("app-i18n.js", "application/javascript; charset=utf-8"),
     "/app-core.js": ("app-core.js", "application/javascript; charset=utf-8"),
     "/app-ui.js": ("app-ui.js", "application/javascript; charset=utf-8"),
     "/app-events.js": ("app-events.js", "application/javascript; charset=utf-8"),
