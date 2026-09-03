@@ -1,4 +1,4 @@
-# APU Syllabus Collector V1.0
+# APU Syllabus Collector V1.1
 
 APU Schedule Builder와 분리된 **독립 자동 수집 유틸리티**입니다.
 
@@ -33,7 +33,7 @@ Salesforce record ID는 추측하지 않습니다.
 
 ## 자동 수집 동작
 
-기본 검색 단위는 Subject가 아니라 **Class code 하나**입니다. 각 Class code를 검색하고 정확히 일치하는 direct URL만 수집합니다. Class code 검색으로 찾지 못한 경우에만 Subject 이름을 fallback으로 검색하며, 그 결과에서도 현재 Class code가 정확히 일치하는 URL만 채택합니다.
+검색은 **Class code 전용**입니다. Subject 이름 검색은 사용하지 않습니다. 화면에서 실제 Class Code/Course Code 입력창을 찾지 못하면 다른 검색창을 대신 쓰지 않고 실패로 기록하며, 정확한 Class Code 필드가 확인된 경우에만 숫자 code를 입력하고 검색합니다.
 
 검색창 값이 제대로 바뀌지 않거나 검색이 실패하면 포털을 다시 열고 재시도합니다. 그래도 찾지 못하면 실패로 기록하고 다음 Class로 넘어갑니다.
 
