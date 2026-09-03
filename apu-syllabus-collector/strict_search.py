@@ -203,7 +203,10 @@ def open_result_for_code(driver, code: str, year: int, timeout: float = 4.0) -> 
                 driver.execute_script("arguments[0].scrollIntoView({block:'center'}); arguments[0].click();", element)
             except Exception:
                 continue
-            nav_deadline = time.monotonic() + 4.0
+            # Once a matching result has been clicked, do not declare failure
+            # before giving the opened syllabus page the full caller timeout.
+            # Focused retry passes 8s here specifically for previously failed Classes.
+            nav_deadline = time.monotonic() + timeout
             try:
                 while time.monotonic() < nav_deadline:
                     direct = _direct_url_from_open_windows(
@@ -216,6 +219,15 @@ def open_result_for_code(driver, code: str, year: int, timeout: float = 4.0) -> 
                     if direct:
                         return direct
                     time.sleep(0.25)
+                direct = _direct_url_from_open_windows(
+                    driver,
+                    code,
+                    year,
+                    origin_handle=origin_handle,
+                    before_handles=before_handles,
+                )
+                if direct:
+                    return direct
             finally:
                 _close_new_windows(driver, before_handles, origin_handle)
         return None
