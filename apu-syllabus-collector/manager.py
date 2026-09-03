@@ -98,18 +98,21 @@ class CollectionManager:
             time.sleep(.6)
         return None
 
-    def _search(self, driver, *, year: int, code: str, subject: str) -> tuple[str | None, str]:
+    def _search(self, driver, *, year: int, code: str) -> tuple[str | None, str]:
+        submitted = False
         for attempt in range(2):
-            if attempt: driver.get(PORTAL_URL); time.sleep(.7)
-            if not _submit_search(driver, code, "code"): continue
+            if attempt:
+                driver.get(PORTAL_URL)
+                time.sleep(.7)
+            if not _submit_search(driver, code, "code"):
+                self.log("warn", f"Class {code}: Class Code field not detected (attempt {attempt + 1}/2)")
+                continue
+            submitted = True
+            self.log("info", f"Class {code}: Class Code query submitted (attempt {attempt + 1}/2)")
             url = self._collect_wanted(driver, year=year, code=code, max_pages=4)
-            if url: return url, "class-code"
-        if subject:
-            driver.get(PORTAL_URL); time.sleep(.7)
-            if _submit_search(driver, subject, "subject"):
-                url = self._collect_wanted(driver, year=year, code=code, max_pages=10)
-                if url: return url, "subject-fallback"
-        return None, "not-found"
+            if url:
+                return url, "class-code"
+        return None, "class-code-not-found" if submitted else "class-code-field-missing"
 
     def _run(self, *, college: str, headless: bool, refresh_data: bool, retry_failed_only: bool) -> None:
         driver = None
@@ -128,7 +131,7 @@ class CollectionManager:
                 if self.stop_event.is_set(): break
                 code, subject = item["classCode"], item["name"]
                 self.current = {"index": index, "queueTotal": len(queue), "classCode": code, "name": subject}; self._save_state(); self.log("info", f"[{index}/{len(queue)}] Class {code} · {subject}")
-                try: url, method = self._search(driver, year=year, code=code, subject=subject)
+                try: url, method = self._search(driver, year=year, code=code)
                 except Exception as exc:
                     url, method = None, "exception"; self.log("error", f"Class {code}: {exc}")
                     try: driver.get(PORTAL_URL)
