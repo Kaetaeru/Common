@@ -69,6 +69,87 @@ class StrictSearchTests(unittest.TestCase):
         self.assertEqual(method, "class-code-result-not-found")
         self.assertEqual([call for call in calls if call[0] == "code"], [("code", "10725"), ("code", "10725")])
 
+    def test_focused_retry_uses_deeper_class_code_search_only(self):
+        mgr = strict_manager.CollectionManager.__new__(strict_manager.CollectionManager)
+        mgr.logs = []
+        mgr.lock = threading.RLock()
+        mgr.log_file = Path("/nonexistent/collector.log")
+        calls = []
+
+        class Driver:
+            def get(self, url):
+                calls.append(("get", url))
+
+        def submit(_driver, code):
+            calls.append(("code", code))
+            return True
+
+        def collect(_driver, *, year, code, max_pages, result_timeout):
+            calls.append(("collect", code, max_pages, result_timeout))
+            return None
+
+        with patch.object(strict_manager, "submit_class_code_search", side_effect=submit), \
+             patch.object(mgr, "_collect_wanted", side_effect=collect), \
+             patch.object(strict_manager.time, "sleep"):
+            found, method = mgr._search(Driver(), year=2026, code="12077", focused=True)
+
+        self.assertIsNone(found)
+        self.assertEqual(method, "class-code-result-not-found")
+        self.assertEqual([call for call in calls if call[0] == "code"], [("code", "12077")] * 4)
+        collect_calls = [call for call in calls if call[0] == "collect"]
+        self.assertEqual(len(collect_calls), 4)
+        self.assertTrue(all(call[2] == strict_manager.FOCUSED_RESULT_PAGES for call in collect_calls))
+        self.assertTrue(all(call[3] == strict_manager.FOCUSED_RESULT_TIMEOUT for call in collect_calls))
+
+    def test_retry_failed_only_queues_only_failed_unmapped_classes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manager = strict_manager.CollectionManager(root)
+            manager.worker_count = 2
+            manager.failed = {
+                "2026:12077": "class-code-result-not-found",
+                "2026:12263": "class-code-result-not-found",
+                "2026:10121": "stale-failure",
+            }
+            data = {
+                "college": "APM",
+                "academicYear": 2026,
+                "term": "AY2026 Fall",
+                "classes": [
+                    {"classCode": "10121", "name": "Psychology", "instructor": "", "term": "Semester"},
+                    {"classCode": "12077", "name": "Thesis A", "instructor": "", "term": "Semester"},
+                    {"classCode": "12263", "name": "Thesis B", "instructor": "", "term": "Semester"},
+                    {"classCode": "10079", "name": "Statistics", "instructor": "", "term": "Semester"},
+                ],
+            }
+            mapping.save_mapping(
+                root / "data" / "syllabus_links.json",
+                {"2026:10121": "https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZABC/202610121?language=en_US"},
+            )
+            seen = []
+
+            class Driver:
+                def quit(self): pass
+
+            def ensure_dataset(_college, refresh=False):
+                manager.dataset = data
+                manager.college = "APM"
+                return data
+
+            def search(_driver, *, year, code, worker="", focused=False):
+                seen.append((code, focused))
+                return None, "class-code-result-not-found"
+
+            manager.running = True
+            with patch.object(manager, "ensure_dataset", side_effect=ensure_dataset), \
+                 patch.object(manager, "_open_browser", return_value=Driver()), \
+                 patch.object(manager, "_search", side_effect=search), \
+                 patch.object(strict_manager.time, "sleep"):
+                manager._run(college="APM", headless=False, refresh_data=False, retry_failed_only=True)
+
+            self.assertEqual(sorted(code for code, _ in seen), ["12077", "12263"])
+            self.assertTrue(all(focused for _, focused in seen))
+
     def test_worker_count_is_configurable_but_bounded(self):
         self.assertEqual(strict_manager.CollectionManager._normalize_worker_count(1), 1)
         self.assertEqual(strict_manager.CollectionManager._normalize_worker_count("10"), 10)
@@ -104,7 +185,7 @@ class StrictSearchTests(unittest.TestCase):
                 manager.college = "APM"
                 return data
 
-            def search(_driver, *, year, code, worker=""):
+            def search(_driver, *, year, code, worker="", focused=False):
                 with seen_lock:
                     seen.append((worker, code))
                 return f"https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZABC/{year}{code}?language=en_US", "class-code"
@@ -216,7 +297,7 @@ class StrictSearchTests(unittest.TestCase):
                 work.put(entry)
 
             with patch.object(manager, "_open_browser", return_value=Driver()), \
-                 patch.object(manager, "_search", side_effect=lambda _driver, *, year, code, worker="": (urls[code], "class-code")), \
+                 patch.object(manager, "_search", side_effect=lambda _driver, *, year, code, worker="", focused=False: (urls[code], "class-code")), \
                  patch.object(strict_manager, "save_mapping", side_effect=flaky_save), \
                  patch.object(strict_manager.time, "sleep"):
                 manager._browser_worker(1, work, queue_total=2, year=2026, mapping={}, headless=False)
