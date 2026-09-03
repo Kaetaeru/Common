@@ -247,7 +247,7 @@ class CollectionManager(BaseCollectionManager):
             else:
                 items = [c for c in data["classes"] if f"{year}:{c['classCode']}" not in mapping]
 
-            self.log("info", f"Queue: {len(items)} Class codes; already stored: {len(mapping)}")
+            self.log("info", f"Work set: {len(items)} Class codes; already stored: {len(mapping)}")
             if not items:
                 self.log("ok", "Nothing to collect")
                 return
