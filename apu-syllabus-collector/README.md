@@ -1,4 +1,4 @@
-# APU Syllabus Collector V1.7
+# APU Syllabus Collector V1.10
 
 APU Schedule Builder와 분리된 **독립 자동 수집 유틸리티**입니다.
 
@@ -22,12 +22,14 @@ Windows에서 `run_windows.bat`를 더블클릭합니다. 브라우저 UI는 기
 
 성공한 direct URL은 **한 건씩 즉시** `data/syllabus_links.json`에 저장합니다. 프로그램이 중간에 종료되어도 다음 실행에서 이미 확보한 Class는 건너뜁니다.
 
-URL은 다음 조건을 모두 만족할 때만 성공으로 저장합니다.
+일반 syllabus URL은 다음 조건을 모두 만족할 때만 성공으로 저장합니다.
 
 - host가 `syllabus.apu.ac.jp`
 - path가 `/syllabus/s/a-syllabus/<record-id>/<year><class-code>` 형식
 - URL의 연도와 현재 timetable 연도가 일치
 - URL 마지막 Class code가 현재 검색 중인 Class code와 정확히 일치
+
+APU 검색 결과가 여러 Class code를 하나의 syllabus 링크로 묶는 경우에는 grouped syllabus로 처리합니다. 같은 결과 anchor의 표시 문자열에서 현재 Class code와 URL의 canonical Class code가 모두 `ClassCode:` 형태로 확인되고, Class code가 2개 이상 명시된 경우에만 URL 끝 Class code 불일치를 허용합니다. 저장 시에는 canonical key도 같은 URL로 함께 기록하여 다음 실행과 Schedule Builder에서도 grouped alias를 검증할 수 있게 합니다.
 
 Salesforce record ID는 추측하지 않습니다.
 
@@ -43,6 +45,8 @@ Salesforce record ID는 추측하지 않습니다.
 
 이 프로젝트가 `Common/apu-syllabus-collector/`에 있고 Schedule Builder가 형제 폴더 `Common/apu-schedule-builder/`에 있으면, Schedule Builder는 이 Collector의 `data/syllabus_links.json`을 자동으로 읽습니다. Collector 자체는 Schedule Builder를 import하거나 실행하지 않습니다.
 
+Schedule Builder는 Collector 출력에 대해서만 canonical key와 동일 URL을 공유하는 grouped alias를 허용합니다. 기존 수동 batch mapping은 계속 `key == URL 마지막 Class code` 규칙을 적용합니다.
+
 ## 검증
 
 ```powershell
@@ -50,6 +54,14 @@ py -3 -m unittest discover -s tests -v
 ```
 
 실제 APU Salesforce 페이지의 DOM은 외부 서비스이므로, 단위 테스트와 별도로 Windows Chrome/Edge에서 실제 수집 로그를 확인해야 최종 통합 검증이 됩니다.
+
+## V1.10 grouped syllabus support
+
+- 검색 결과의 direct syllabus anchor에서 `ClassCode:` 패턴을 추출합니다.
+- 한 anchor에 Class code가 2개 이상 있고, 현재 검색 대상과 URL canonical Class code가 모두 그 목록에 있을 때만 grouped syllabus로 인정합니다.
+- grouped alias는 canonical direct URL을 그대로 사용하며 URL을 추측하거나 Class code 부분을 변경하지 않습니다.
+- 저장 시 canonical key를 같은 URL로 함께 기록하여 재실행 후에도 alias가 유지됩니다.
+- Schedule Builder는 standalone Collector 출력에 한해서 이 canonical+alias 구조를 허용하고, 수동 batch의 mismatch 검증은 완화하지 않습니다.
 
 ## V1.6 shared-queue parallel collection
 
