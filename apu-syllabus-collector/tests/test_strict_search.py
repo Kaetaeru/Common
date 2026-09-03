@@ -160,6 +160,68 @@ class StrictSearchTests(unittest.TestCase):
             self.assertEqual(mapping.load_mapping(root / "data" / "syllabus_links.json")["2026:10121"], url)
             self.assertNotIn("2026:10121", manager.failed)
 
+    def test_save_mapping_retries_windows_access_denied_with_unique_temp_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "syllabus_links.json"
+            url = "https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZABC/202610121?language=en_US"
+            real_replace = mapping.os.replace
+            attempts = []
+
+            def flaky_replace(src, dst):
+                attempts.append(Path(src).name)
+                if len(attempts) < 3:
+                    exc = PermissionError(13, "Access denied", str(dst))
+                    exc.winerror = 5
+                    raise exc
+                return real_replace(src, dst)
+
+            with patch.object(mapping.os, "replace", side_effect=flaky_replace), \
+                 patch.object(mapping.time, "sleep"):
+                mapping.save_mapping(path, {"2026:10121": url})
+
+            self.assertEqual(mapping.load_mapping(path)["2026:10121"], url)
+            self.assertEqual(len(attempts), 3)
+            self.assertEqual(len(set(attempts)), 3)
+            self.assertEqual(list(Path(tmp).glob("*.tmp")), [])
+
+    def test_save_failure_does_not_kill_worker_or_skip_rest_of_fixed_part(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manager = strict_manager.CollectionManager(root)
+            items = [
+                (1, {"classCode": "10121", "name": "Psychology", "instructor": "", "term": "Semester"}),
+                (2, {"classCode": "10122", "name": "Psychology II", "instructor": "", "term": "Semester"}),
+            ]
+            urls = {
+                "10121": "https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZABC/202610121?language=en_US",
+                "10122": "https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZDEF/202610122?language=en_US",
+            }
+
+            class Driver:
+                def quit(self): pass
+
+            save_calls = 0
+            real_save = strict_manager.save_mapping
+
+            def flaky_save(path, state):
+                nonlocal save_calls
+                save_calls += 1
+                if save_calls == 1:
+                    raise PermissionError(13, "Access denied", str(path))
+                return real_save(path, state)
+
+            with patch.object(manager, "_open_browser", return_value=Driver()), \
+                 patch.object(manager, "_search", side_effect=lambda _driver, *, year, code, worker="": (urls[code], "class-code")), \
+                 patch.object(strict_manager, "save_mapping", side_effect=flaky_save), \
+                 patch.object(strict_manager.time, "sleep"):
+                manager._browser_worker(1, items, queue_total=2, year=2026, mapping={}, headless=False)
+
+            saved = mapping.load_mapping(root / "data" / "syllabus_links.json")
+            self.assertNotIn("2026:10121", saved)
+            self.assertEqual(saved["2026:10122"], urls["10122"])
+            self.assertEqual(manager.failed["2026:10121"], "save-failed")
+            self.assertNotIn("2026:10122", manager.failed)
+
 
 if __name__ == "__main__":
     unittest.main()
