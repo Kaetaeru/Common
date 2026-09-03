@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import ssl
 import subprocess
@@ -7,10 +8,12 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import app_backend as _backend
+from syllabus_mapping import load_verified_mapping, mapping_fingerprint
 from app_backend import *  # noqa: F401,F403 - preserve the public API used by tests and scripts
 
 
 _original_download_file = _backend.download_file
+_original_load_or_build_data = _backend.load_or_build_data
 _original_do_GET = _backend.Handler.do_GET
 _STATIC_FILES = {
     "/style.css": ("style.css", "text/css; charset=utf-8"),
@@ -93,6 +96,48 @@ def _download_file_with_windows_cert_fallback(url: str, destination: Path) -> No
 # gets the verified Windows trust-store fallback without duplicating the backend.
 _backend.download_file = _download_file_with_windows_cert_fallback
 download_file = _download_file_with_windows_cert_fallback
+
+
+def _load_syllabus_link_overrides_from_repository() -> dict[str, str]:
+    return load_verified_mapping(_backend.DATA_DIR)
+
+
+# The schedule app and the separate collector use the same verified mapping reader.
+_backend.load_syllabus_link_overrides = _load_syllabus_link_overrides_from_repository
+load_syllabus_link_overrides = _load_syllabus_link_overrides_from_repository
+
+
+def _load_or_build_data_with_mapping_cache(college: str, allow_download: bool = True) -> dict:
+    college = college.upper()
+    fingerprint = mapping_fingerprint(_backend.DATA_DIR)
+    cached = _backend.normalized_path(college)
+    timetable_path, subject_path = _backend.source_paths(college)
+    cache_verified = True
+
+    if cached.exists():
+        try:
+            cached_data = json.loads(cached.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            cached_data = {}
+        previous = cached_data.get("syllabusMappingFingerprint")
+        if previous != fingerprint:
+            if timetable_path.exists() and subject_path.exists():
+                cached.unlink(missing_ok=True)
+            else:
+                cache_verified = False
+
+    data = _original_load_or_build_data(college, allow_download=allow_download)
+    if cache_verified:
+        data["syllabusMappingFingerprint"] = fingerprint
+        data["syllabusMappingCacheVerified"] = True
+        cached.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    else:
+        data["syllabusMappingCacheVerified"] = False
+    return data
+
+
+_backend.load_or_build_data = _load_or_build_data_with_mapping_cache
+load_or_build_data = _load_or_build_data_with_mapping_cache
 
 
 def _do_GET_with_static_assets(self) -> None:
