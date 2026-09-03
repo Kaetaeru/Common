@@ -45,23 +45,38 @@ class CollectorTests(unittest.TestCase):
             }), encoding="utf-8")
             self.assertEqual(list(mapping.load_mapping(output)), ["2026:10121"])
 
-    def test_search_uses_subject_only_after_two_class_code_attempts(self):
+    def test_search_uses_class_code_only_and_never_subject_name(self):
         with tempfile.TemporaryDirectory() as tmp:
             mgr = manager_module.CollectionManager(Path(tmp))
             calls = []
             class Driver:
                 def get(self, url): calls.append(("get", url))
-            url = "https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZABC/202610121?language=en_US"
-            def submit(_driver, value, mode): calls.append((mode, value)); return True
-            def page_links(_driver, wanted, year):
-                if calls[-1] == ("subject", "Psychology"):
-                    return {"2026:10121": url}
-                return {}
-            with patch.object(manager_module, "_submit_search", side_effect=submit), patch.object(manager_module, "_page_links", side_effect=page_links), patch.object(manager_module, "_click_text", return_value=False), patch.object(manager_module.time, "sleep"):
-                found, method = mgr._search(Driver(), year=2026, code="10121", subject="Psychology")
-            self.assertEqual(found, url)
-            self.assertEqual(method, "subject-fallback")
-            self.assertEqual([c for c in calls if c[0] in {"code", "subject"}], [("code", "10121"), ("code", "10121"), ("subject", "Psychology")])
+            def submit(_driver, value, mode):
+                calls.append((mode, value))
+                return True
+            with patch.object(manager_module, "_submit_search", side_effect=submit), patch.object(manager_module, "_page_links", return_value={}), patch.object(manager_module, "_click_text", return_value=False), patch.object(manager_module.time, "sleep"):
+                found, method = mgr._search(Driver(), year=2026, code="10121")
+            self.assertIsNone(found)
+            self.assertEqual(method, "class-code-not-found")
+            self.assertEqual([c for c in calls if c[0] == "code"], [("code", "10121"), ("code", "10121")])
+            self.assertFalse(any(c[0] == "subject" for c in calls))
+
+    def test_class_code_search_never_uses_subject_field_as_fallback(self):
+        class Element:
+            def __init__(self): self.attrs = {"type": "text"}
+            def is_displayed(self): return True
+            def is_enabled(self): return True
+            def get_attribute(self, name): return self.attrs.get(name, "")
+        subject = Element()
+        class Driver:
+            def execute_script(self, script, *args):
+                if "const selector = arguments[0]" in script:
+                    return [subject] if str(args[0]).startswith("input") else []
+                if "const start = arguments[0]" in script:
+                    return "Subject Name"
+                return None
+        self.assertIs(syllabus_sync._find_input(Driver(), "subject"), subject)
+        self.assertIsNone(syllabus_sync._find_input(Driver(), "code"))
 
     def test_manager_status_marks_mapped_failed_and_pending(self):
         with tempfile.TemporaryDirectory() as tmp:
