@@ -148,6 +148,7 @@ class CollectionManager(BaseCollectionManager):
         label = f"W{worker_id:02d}"
         driver = None
         try:
+            # Stagger startup so Selenium Manager and Chromium do not all initialize at once.
             time.sleep((worker_id - 1) * 0.2)
             driver = self._open_browser(worker_id, headless=headless)
 
@@ -220,6 +221,7 @@ class CollectionManager(BaseCollectionManager):
                     self._save_state()
 
                 if driver is None and not self.stop_event.is_set():
+                    # This worker could not recover its browser. Leave the rest of its fixed part pending.
                     remaining = len(part) - part_index
                     if remaining:
                         self.log("warn", f"[{label}] Worker stopped; {remaining} Class codes in its part remain pending")
