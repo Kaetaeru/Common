@@ -211,9 +211,15 @@ class CollectionManager(BaseCollectionManager):
                 with self.lock:
                     if url and valid_direct_url(url, year, code):
                         mapping[key] = url
-                        save_mapping(self.output_file, mapping)
-                        self.failed.pop(key, None)
-                        self.log("ok", f"[{label}] Class {code}: saved ({method})")
+                        try:
+                            save_mapping(self.output_file, mapping)
+                        except OSError as exc:
+                            mapping.pop(key, None)
+                            self.failed[key] = "save-failed"
+                            self.log("error", f"[{label}] Class {code}: result found but save failed: {exc}")
+                        else:
+                            self.failed.pop(key, None)
+                            self.log("ok", f"[{label}] Class {code}: saved ({method})")
                     elif not self.stop_event.is_set():
                         self.failed[key] = method
                         self.log("error", f"[{label}] Class {code}: direct link not found ({method})")
