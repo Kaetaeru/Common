@@ -1,4 +1,4 @@
-# APU Schedule Builder V1.2
+# APU Schedule Builder V1.3
 
 Ritsumeikan APU AY2026 Fall 2023 Curriculum용 로컬 시간표 생성기입니다.
 
@@ -16,9 +16,21 @@ py -3 -m pip install -r requirements.txt
 py -3 app.py
 ```
 
+## V1.3 Windows HTTPS 인증서 처리
+
+APU 공식 XLSX 다운로드에서 Python/OpenSSL이 Windows가 신뢰하는 인증서 체인을 찾지 못해 `CERTIFICATE_VERIFY_FAILED`가 발생하는 환경을 처리합니다.
+
+- 평소에는 기존 Python HTTPS 다운로드를 그대로 사용합니다.
+- Windows에서 **인증서 검증 오류일 때만** PowerShell `Invoke-WebRequest`로 다시 다운로드합니다.
+- 이 fallback은 Windows의 신뢰된 인증서 저장소를 사용하며 TLS 인증서 검증을 끄지 않습니다.
+- `verify=False`, `-k`, `SkipCertificateCheck` 같은 우회 옵션은 사용하지 않습니다.
+- 인증서 오류가 아닌 네트워크 오류는 숨기지 않고 원래 오류를 그대로 반환합니다.
+
+Windows fallback까지 실패하면 Windows 날짜/시간, VPN·프록시·보안 프로그램, Windows 루트 인증서 업데이트 상태를 확인해야 합니다.
+
 ## V1.2 UX 흐름
 
-V1.2는 다크모드/강한 경계 UI와 Class 중심 시간표를 유지하면서, 실라버스 동기화를 Subject 묶음 검색보다 Class code 개별 검색 우선으로 바꿔 Salesforce가 첫 검색어를 반복하는 문제를 방지합니다.
+V1.2부터 다크모드/강한 경계 UI와 Class 중심 시간표를 유지하면서, 실라버스 동기화를 Subject 묶음 검색보다 Class code 개별 검색 우선으로 바꿔 Salesforce가 첫 검색어를 반복하는 문제를 방지합니다.
 
 1. 왼쪽 `수업 찾기`에서 과목을 검색합니다.
 2. 같은 과목 아래 실제 `Class code`별 시간표를 각각 확인합니다.
