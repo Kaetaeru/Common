@@ -9,7 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from manager import CollectionManager
+from strict_manager import CollectionManager
 
 ROOT = Path(__file__).resolve().parent
 WEB_DIR = ROOT / "web"
@@ -17,7 +17,7 @@ MANAGER = CollectionManager(ROOT)
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "APUSyllabusCollector/1.1"
+    server_version = "APUSyllabusCollector/1.2"
     def log_message(self, format, *args): print("[collector]", format % args)
     def send_json(self, payload, status=200):
         body=json.dumps(payload, ensure_ascii=False).encode(); self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8"); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body)
