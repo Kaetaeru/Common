@@ -162,9 +162,14 @@ def _find_input(driver, mode: str):
     if scored:
         return max(scored, key=lambda x: x[0])[1]
 
-    # Salesforce occasionally labels the one general search box only as
-    # "Keyword". Use it only when there is a single safe text box rather than
-    # guessing among login/contact fields.
+    # Class-code collection must never guess a generic or Subject field. If the
+    # page does not expose a field that is actually labelled as a code field,
+    # report that state and let the caller retry the proper search screen.
+    if mode == "code":
+        return None
+
+    # Subject-mode remains available for legacy helper callers, but the
+    # standalone collector no longer uses it.
     safe = []
     for el, ctx in raw:
         t = ctx.lower()
@@ -180,40 +185,50 @@ def _find_input(driver, mode: str):
     return safe[0] if len(safe) == 1 else None
 
 
-def _wait_for_input(driver, timeout: float = 10.0):
+def _wait_for_input(driver, mode: str, timeout: float = 10.0):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        subject = _find_input(driver, "subject")
-        code = _find_input(driver, "code")
-        if subject or code:
-            return subject or code
+        field = _find_input(driver, mode)
+        if field is not None:
+            return field
         time.sleep(0.35)
     return None
 
 
-def _ensure_search(driver) -> None:
+def _ensure_search(driver, mode: str = "code") -> bool:
     # Experience Cloud can take several seconds after document.readyState=complete
-    # before Lightning mounts the actual controls.
-    if _wait_for_input(driver, 5.0):
-        return
+    # before Lightning mounts the actual controls. For Class-code collection,
+    # only the real Class/Course Code input satisfies this check.
+    if _wait_for_input(driver, mode, 3.0):
+        return True
 
-    click_groups = [
-        ["Syllabus Search", "Search Syllabus", "シラバス検索"],
-        [
+    click_groups = [["Syllabus Search", "Search Syllabus", "シラバス検索"]]
+    if mode == "code":
+        click_groups.extend([
+            [
+                "Search by Class Code", "Search from Class Code",
+                "Class Code Search", "Class Code", "Course Code",
+                "クラスコード", "授業コード", "講義コード",
+            ],
+            [
+                "Search by Subject/Class", "Search from Subject/Class",
+                "Search by Class", "Subject/Class", "Course/Class",
+                "科目・クラスから検索",
+            ],
+        ])
+    else:
+        click_groups.append([
             "Search by Subject/Class", "Search from Subject/Class",
             "Search by Subject", "Search from Subject",
-            "Search by Course", "Search by Class",
-            "Subject/Class", "Course/Class",
+            "Search by Course", "Subject/Class", "Course/Class",
             "科目・クラスから検索", "科目から検索", "講義から検索",
-        ],
-    ]
-    for words in click_groups:
-        if _click_text(driver, words) and _wait_for_input(driver, 8.0):
-            return
+        ])
 
-    # One more passive wait covers slow Salesforce hydration even when the
-    # navigation item was already selected on entry.
-    _wait_for_input(driver, 5.0)
+    for words in click_groups:
+        if _click_text(driver, words) and _wait_for_input(driver, mode, 5.0):
+            return True
+
+    return _wait_for_input(driver, mode, 3.0) is not None
 
 
 def _field_value(field) -> str:
@@ -264,10 +279,9 @@ def _replace_input_value(driver, field, value: str) -> bool:
 
 
 def _submit_search(driver, value: str, mode: str) -> bool:
-    _ensure_search(driver)
+    if not _ensure_search(driver, mode):
+        return False
     field = _find_input(driver, mode)
-    if field is None and mode == "code":
-        field = _find_input(driver, "subject")
     if field is None:
         return False
     if not _replace_input_value(driver, field, value):
@@ -290,7 +304,7 @@ def _submit_search(driver, value: str, mode: str) -> bool:
     time.sleep(0.8)
     # A controlled Lightning input sometimes restores its previous value after
     # submit. Treat that as a failed search rather than silently repeating it.
-    current = _find_input(driver, mode) or (_find_input(driver, "subject") if mode == "code" else None)
+    current = _find_input(driver, mode)
     if current is not None:
         actual = _field_value(current)
         if actual and actual != str(value):
@@ -374,13 +388,6 @@ def _make_driver(headless: bool = False):
 
 def sync_links(*, sections: list[dict[str, Any]], year: int, mapping_path: Path, headless: bool = False) -> dict[str, Any]:
     wanted = {str(s.get("classCode", "")).strip() for s in sections if str(s.get("classCode", "")).strip()}
-    subjects: dict[str, set[str]] = {}
-    for s in sections:
-        name = str(s.get("name", "")).strip()
-        code = str(s.get("classCode", "")).strip()
-        if name and code:
-            subjects.setdefault(name, set()).add(code)
-
     mapping = _load_mapping(mapping_path)
     already = {key.split(":", 1)[1] for key in mapping if key.startswith(f"{year}:")}
     missing = wanted - already
@@ -392,8 +399,8 @@ def sync_links(*, sections: list[dict[str, Any]], year: int, mapping_path: Path,
     try:
         driver.get(PORTAL_URL)
         time.sleep(2.5)
-        _ensure_search(driver)
-        if not (_find_input(driver, "subject") or _find_input(driver, "code")):
+        _ensure_search(driver, "code")
+        if not _find_input(driver, "code"):
             raise RuntimeError(
                 "APU syllabus search controls could not be detected, including inside Salesforce Shadow DOM. "
                 "Diagnostic files were saved under data/syllabus_sync_debug/."
@@ -408,7 +415,7 @@ def sync_links(*, sections: list[dict[str, Any]], year: int, mapping_path: Path,
                 # Re-open the public search once and retry. This also recovers
                 # when the result page replaced/unmounted the previous input.
                 driver.get(PORTAL_URL)
-                _ensure_search(driver)
+                _ensure_search(driver, "code")
                 if not _submit_search(driver, code, "code"):
                     continue
             hits = _collect_pages(driver, {code}, year)
@@ -419,23 +426,7 @@ def sync_links(*, sections: list[dict[str, Any]], year: int, mapping_path: Path,
             if not missing:
                 break
 
-        # Only unresolved Class codes fall back to subject-name search. This is
-        # useful for unusual language classes whose public search may not accept
-        # the numeric code, while keeping the normal path unambiguous.
-        for name, codes in sorted(subjects.items()):
-            relevant = codes & missing
-            if not relevant:
-                continue
-            if not _submit_search(driver, name, "subject"):
-                continue
-            searched += 1
-            hits = _collect_pages(driver, relevant, year)
-            if hits:
-                mapping.update(hits)
-                missing -= {key.split(":", 1)[1] for key in hits}
-                _save_mapping(mapping_path, mapping)
-            if not missing:
-                break
+        # No Subject-name fallback: every query must use the Class Code field.
 
         final = _load_mapping(mapping_path)
         resolved = {key.split(":", 1)[1] for key in final if key.startswith(f"{year}:")} & wanted
