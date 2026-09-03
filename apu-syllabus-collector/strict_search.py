@@ -86,6 +86,86 @@ def current_direct_url(driver, code: str, year: int) -> str | None:
     return found.get(f"{year}:{code}")
 
 
+def _window_handles(driver) -> list[str]:
+    try:
+        return list(driver.window_handles or [])
+    except Exception:
+        return []
+
+
+def _current_window_handle(driver) -> str | None:
+    try:
+        return str(driver.current_window_handle)
+    except Exception:
+        return None
+
+
+def _switch_window(driver, handle: str | None) -> bool:
+    if not handle:
+        return False
+    try:
+        driver.switch_to.window(handle)
+        return True
+    except Exception:
+        return False
+
+
+def _direct_url_from_open_windows(
+    driver,
+    code: str,
+    year: int,
+    *,
+    origin_handle: str | None,
+    before_handles: set[str],
+) -> str | None:
+    handles = _window_handles(driver)
+    if not handles:
+        direct = current_direct_url(driver, code, year)
+        if direct:
+            return direct
+        links = legacy._page_links(driver, {str(code)}, year)
+        return links.get(f"{year}:{code}") if links else None
+
+    new_handles = [handle for handle in handles if handle not in before_handles]
+    existing_handles = [handle for handle in handles if handle in before_handles]
+    ordered = new_handles + existing_handles
+
+    found = None
+    for handle in ordered:
+        if not _switch_window(driver, handle):
+            continue
+        direct = current_direct_url(driver, code, year)
+        if direct:
+            found = direct
+            break
+        links = legacy._page_links(driver, {str(code)}, year)
+        if links:
+            found = links.get(f"{year}:{code}")
+            if found:
+                break
+
+    if origin_handle and origin_handle in _window_handles(driver):
+        _switch_window(driver, origin_handle)
+    return found
+
+
+def _close_new_windows(driver, before_handles: set[str], origin_handle: str | None) -> None:
+    for handle in _window_handles(driver):
+        if handle in before_handles:
+            continue
+        if not _switch_window(driver, handle):
+            continue
+        try:
+            driver.close()
+        except Exception:
+            pass
+    remaining = _window_handles(driver)
+    if origin_handle and origin_handle in remaining:
+        _switch_window(driver, origin_handle)
+    elif remaining:
+        _switch_window(driver, remaining[0])
+
+
 def open_result_for_code(driver, code: str, year: int, timeout: float = 4.0) -> str | None:
     token = re.compile(rf"(?<!\d){re.escape(str(code))}(?!\d)")
     selector = "a,button,[role='link'],[role='button'],tr,[role='row'],li,[data-row-key-value],[onclick]"
@@ -117,18 +197,26 @@ def open_result_for_code(driver, code: str, year: int, timeout: float = 4.0) -> 
             continue
 
         for _, _, element in sorted(candidates, key=lambda item: (item[0], item[1])):
+            origin_handle = _current_window_handle(driver)
+            before_handles = set(_window_handles(driver))
             try:
                 driver.execute_script("arguments[0].scrollIntoView({block:'center'}); arguments[0].click();", element)
             except Exception:
                 continue
             nav_deadline = time.monotonic() + 4.0
-            while time.monotonic() < nav_deadline:
-                direct = current_direct_url(driver, code, year)
-                if direct:
-                    return direct
-                links = legacy._page_links(driver, {str(code)}, year)
-                if links:
-                    return links.get(f"{year}:{code}")
-                time.sleep(0.25)
+            try:
+                while time.monotonic() < nav_deadline:
+                    direct = _direct_url_from_open_windows(
+                        driver,
+                        code,
+                        year,
+                        origin_handle=origin_handle,
+                        before_handles=before_handles,
+                    )
+                    if direct:
+                        return direct
+                    time.sleep(0.25)
+            finally:
+                _close_new_windows(driver, before_handles, origin_handle)
         return None
     return None
