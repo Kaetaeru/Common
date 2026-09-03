@@ -1,6 +1,10 @@
+import tempfile
+import threading
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
+import mapping
 import strict_manager
 import strict_search
 
@@ -63,6 +67,53 @@ class StrictSearchTests(unittest.TestCase):
         self.assertIsNone(found)
         self.assertEqual(method, "class-code-result-not-found")
         self.assertEqual([call for call in calls if call[0] == "code"], [("code", "10725"), ("code", "10725")])
+
+    def test_parallel_run_launches_ten_browsers_and_processes_each_class_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manager = strict_manager.CollectionManager(root)
+            classes = [
+                {"classCode": str(11000 + i), "name": f"Course {i}", "instructor": "", "term": "Semester"}
+                for i in range(12)
+            ]
+            data = {"college": "APM", "academicYear": 2026, "term": "AY2026 Fall", "classes": classes}
+            drivers = []
+            seen = []
+            seen_lock = threading.Lock()
+
+            class Driver:
+                def get(self, _url): pass
+                def quit(self): pass
+
+            def make_driver(*, headless=False):
+                driver = Driver()
+                drivers.append(driver)
+                return driver
+
+            def ensure_dataset(_college, refresh=False):
+                manager.dataset = data
+                manager.college = "APM"
+                return data
+
+            def search(_driver, *, year, code, worker=""):
+                with seen_lock:
+                    seen.append((worker, code))
+                return f"https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZABC/{year}{code}?language=en_US", "class-code"
+
+            manager.running = True
+            with patch.object(manager, "ensure_dataset", side_effect=ensure_dataset), \
+                 patch.object(strict_manager, "_make_driver", side_effect=make_driver), \
+                 patch.object(manager, "_search", side_effect=search), \
+                 patch.object(strict_manager.time, "sleep"):
+                manager._run(college="APM", headless=False, refresh_data=False, retry_failed_only=False)
+
+            self.assertEqual(len(drivers), 10)
+            self.assertEqual(sorted(code for _, code in seen), sorted(item["classCode"] for item in classes))
+            self.assertEqual(len({code for _, code in seen}), len(classes))
+            self.assertTrue(all(worker.startswith("W") for worker, _ in seen))
+            self.assertEqual(len(mapping.load_mapping(root / "data" / "syllabus_links.json")), len(classes))
+            self.assertFalse(manager.running)
+            self.assertEqual(manager.active_workers, {})
 
 
 if __name__ == "__main__":
