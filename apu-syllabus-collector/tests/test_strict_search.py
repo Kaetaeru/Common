@@ -1,3 +1,4 @@
+import queue
 import tempfile
 import threading
 import unittest
@@ -76,7 +77,7 @@ class StrictSearchTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             strict_manager.CollectionManager._normalize_worker_count(11)
 
-    def test_partitioned_run_uses_configured_browsers_and_fixed_unique_parts(self):
+    def test_shared_queue_run_uses_configured_browsers_and_processes_each_class_once(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             manager = strict_manager.CollectionManager(root)
@@ -111,19 +112,16 @@ class StrictSearchTests(unittest.TestCase):
             manager.running = True
             with patch.object(manager, "ensure_dataset", side_effect=ensure_dataset), \
                  patch.object(manager, "_open_browser", side_effect=open_browser), \
-                 patch.object(manager, "_search", side_effect=search), \
-                 patch.object(strict_manager.time, "sleep"):
+                 patch.object(manager, "_search", side_effect=search):
                 manager._run(college="APM", headless=False, refresh_data=False, retry_failed_only=False)
 
             self.assertEqual(len(drivers), 4)
-            by_worker = {}
-            for worker, code in seen:
-                by_worker.setdefault(worker, []).append(code)
-            self.assertEqual(by_worker["W01"], ["11000", "11001", "11002"])
-            self.assertEqual(by_worker["W02"], ["11003", "11004", "11005"])
-            self.assertEqual(by_worker["W03"], ["11006", "11007", "11008"])
-            self.assertEqual(by_worker["W04"], ["11009", "11010", "11011"])
+            self.assertEqual(sorted(code for _, code in seen), sorted(item["classCode"] for item in classes))
             self.assertEqual(len({code for _, code in seen}), len(classes))
+            counts = {}
+            for worker, _code in seen:
+                counts[worker] = counts.get(worker, 0) + 1
+            self.assertGreater(max(counts.values()), 3)
             self.assertEqual(len(mapping.load_mapping(root / "data" / "syllabus_links.json")), len(classes))
             self.assertFalse(manager.running)
             self.assertEqual(manager.active_workers, {})
@@ -142,12 +140,14 @@ class StrictSearchTests(unittest.TestCase):
             first = Driver()
             second = Driver()
             mapping_state = {}
+            work = queue.Queue()
+            work.put((1, item))
             with patch.object(manager, "_open_browser", side_effect=[first, second]) as open_browser, \
                  patch.object(manager, "_search", side_effect=[RuntimeError("browser died"), (url, "class-code")]), \
                  patch.object(strict_manager.time, "sleep"):
                 manager._browser_worker(
                     1,
-                    [(1, item)],
+                    work,
                     queue_total=1,
                     year=2026,
                     mapping=mapping_state,
@@ -155,6 +155,7 @@ class StrictSearchTests(unittest.TestCase):
                 )
 
             self.assertEqual(open_browser.call_count, 2)
+            self.assertEqual(work.unfinished_tasks, 0)
             self.assertGreaterEqual(first.quit_calls, 1)
             self.assertGreaterEqual(second.quit_calls, 1)
             self.assertEqual(mapping.load_mapping(root / "data" / "syllabus_links.json")["2026:10121"], url)
@@ -184,7 +185,7 @@ class StrictSearchTests(unittest.TestCase):
             self.assertEqual(len(set(attempts)), 3)
             self.assertEqual(list(Path(tmp).glob("*.tmp")), [])
 
-    def test_save_failure_does_not_kill_worker_or_skip_rest_of_fixed_part(self):
+    def test_save_failure_does_not_kill_worker_or_skip_rest_of_shared_queue(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             manager = strict_manager.CollectionManager(root)
@@ -210,12 +211,17 @@ class StrictSearchTests(unittest.TestCase):
                     raise PermissionError(13, "Access denied", str(path))
                 return real_save(path, state)
 
+            work = queue.Queue()
+            for entry in items:
+                work.put(entry)
+
             with patch.object(manager, "_open_browser", return_value=Driver()), \
                  patch.object(manager, "_search", side_effect=lambda _driver, *, year, code, worker="": (urls[code], "class-code")), \
                  patch.object(strict_manager, "save_mapping", side_effect=flaky_save), \
                  patch.object(strict_manager.time, "sleep"):
-                manager._browser_worker(1, items, queue_total=2, year=2026, mapping={}, headless=False)
+                manager._browser_worker(1, work, queue_total=2, year=2026, mapping={}, headless=False)
 
+            self.assertEqual(work.unfinished_tasks, 0)
             saved = mapping.load_mapping(root / "data" / "syllabus_links.json")
             self.assertNotIn("2026:10121", saved)
             self.assertEqual(saved["2026:10122"], urls["10122"])
