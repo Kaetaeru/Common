@@ -78,6 +78,45 @@ class SameTabDriver(NewTabDriver):
         return None
 
 
+class FakeClock:
+    def __init__(self):
+        self.now = 0.0
+
+    def monotonic(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.now += seconds
+
+
+class SlowNewTabDriver(NewTabDriver):
+    def __init__(self, clock):
+        super().__init__()
+        self.clock = clock
+        self.opened_at = None
+
+    @property
+    def current_url(self):
+        if self._current == "detail":
+            if self.opened_at is not None and self.clock.now - self.opened_at >= 5.0:
+                return URL
+            return "about:blank"
+        return self.urls[self._current]
+
+    def execute_script(self, script, *args):
+        if "const selector = arguments[0]" in script:
+            return [self.row]
+        if "const el = arguments[0]" in script:
+            return "Class Code 12077 Undergraduate Thesis AF"
+        if "scrollIntoView" in script:
+            if "detail" not in self._handles:
+                self._handles.append("detail")
+                self.urls["detail"] = "about:blank"
+                self.opened_at = self.clock.now
+            return None
+        return None
+
+
 class NewTabCaptureTests(unittest.TestCase):
     def test_result_opened_in_new_tab_is_captured_and_tab_is_closed(self):
         driver = NewTabDriver()
@@ -95,6 +134,17 @@ class NewTabCaptureTests(unittest.TestCase):
         self.assertEqual(found, URL)
         self.assertEqual(driver.window_handles, ["search"])
         self.assertEqual(driver.closed, [])
+
+    def test_focused_timeout_waits_for_slow_opened_url_before_failure(self):
+        clock = FakeClock()
+        driver = SlowNewTabDriver(clock)
+        with patch.object(strict_search.time, "monotonic", side_effect=clock.monotonic), \
+             patch.object(strict_search.time, "sleep", side_effect=clock.sleep):
+            found = strict_search.open_result_for_code(driver, "12077", 2026, timeout=8.0)
+        self.assertEqual(found, URL)
+        self.assertGreaterEqual(clock.now, 5.0)
+        self.assertEqual(driver.window_handles, ["search"])
+        self.assertEqual(driver.closed, ["detail"])
 
 
 if __name__ == "__main__":
