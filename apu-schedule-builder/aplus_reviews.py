@@ -108,7 +108,7 @@ def build_review_index(subject_payload: Any, course_payload: Any) -> dict[tuple[
             "rating": round(sum(ratings) / len(ratings), 1) if ratings else None,
             "reviewCount": len(reviews),
             "recommendPercent": round(sum(recommended) * 100 / len(recommended)) if recommended else None,
-            "sourceUrl": SITE_URL,
+            "sourceUrl": f"{SITE_URL}subject/{bucket['subjectId']}",
         }
     return result
 

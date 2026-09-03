@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -10,103 +10,77 @@
 <body>
 <div class="app">
   <header class="topbar">
-    <div class="brand"><div class="logo">APU</div><div><h1>Schedule Builder</h1><small><span id="datasetTerm">학기 확인 중</span> · 2023 Curriculum</small></div></div>
+    <div class="brand"><div class="logo">APU</div><div><h1>Schedule Builder</h1><small><span id="datasetTerm" data-i18n="app.termChecking">Checking term</span> · 2023 Curriculum</small></div></div>
     <div class="top-actions">
       <button class="top-button" id="profileButton">APM · 5 Semester</button>
-      <span class="top-chip" id="dataBadge">데이터 확인 중</span>
-      <button class="top-button theme-button" id="themeButton" aria-label="화면 테마 전환"><span class="theme-dot"></span><span id="themeText">라이트 모드</span></button><button class="top-button" id="settingsButton">설정</button>
+      <span class="top-chip" id="dataBadge" data-i18n="app.dataChecking">Checking data</span>
+      <button class="top-button theme-button" id="themeButton" aria-label="Switch screen theme"><span class="theme-dot"></span><span id="themeText">Light mode</span></button>
+      <button class="top-button" id="settingsButton" data-i18n="app.settings">Settings</button>
     </div>
   </header>
 
   <div class="workspace">
     <aside class="sidebar">
       <div class="sidebar-tabs">
-        <button class="sidebar-tab active" data-tab="FIND">수업 찾기</button>
-        <button class="sidebar-tab" data-tab="MY">내 수업 <span id="myCount">0</span></button>
+        <button class="sidebar-tab active" data-tab="FIND" data-i18n="app.findCourses">Find courses</button>
+        <button class="sidebar-tab" data-tab="MY"><span data-i18n="app.myCourses">My courses</span> <span id="myCount">0</span></button>
       </div>
       <div class="sidebar-body" id="findPane">
         <div class="search-wrap">
-          <input id="search" class="search" type="search" placeholder="과목명, 교수, Class code 검색">
-          <div id="slotFilter" class="slot-filter hidden"><span id="slotFilterText"></span><button id="clearSlotFilter">전체 보기</button></div>
+          <input id="search" class="search" type="search" placeholder="Search subject, instructor, or Class code" data-i18n-placeholder="app.searchPlaceholder">
+          <div id="slotFilter" class="slot-filter hidden"><span id="slotFilterText"></span><button id="clearSlotFilter" data-i18n="app.all">Show all</button></div>
           <div class="filters">
-            <select id="termFilter"><option value="">모든 기간</option><option value="SEMESTER">Semester</option><option value="Q1">1Q</option><option value="Q2">2Q</option></select>
-            <select id="languageFilter"><option value="">모든 언어</option></select>
+            <select id="termFilter"><option value="" data-i18n="app.allTerms">All terms</option><option value="SEMESTER">Semester</option><option value="Q1">1Q</option><option value="Q2">2Q</option></select>
+            <select id="languageFilter"><option value="" data-i18n="app.allLanguages">All languages</option></select>
           </div>
-          <div class="filter-line"><span id="eligibilityText">개인 수강 기준 적용 중</span><label><input id="showUnavailable" type="checkbox">수강 제한도 보기</label></div>
+          <div class="filter-line"><span id="eligibilityText" data-i18n="app.personalEligibility">Personal eligibility rules active</span><label><input id="showUnavailable" type="checkbox"><span data-i18n="app.showRestricted">Show restricted courses</span></label></div>
         </div>
-        <div class="list-summary" id="listSummary">데이터를 불러오는 중...</div>
-        <div class="course-list" id="courseList"><div class="empty">APU 데이터를 확인하고 있습니다.</div></div>
+        <div class="list-summary" id="listSummary" data-i18n="app.loading">Loading data...</div>
+        <div class="course-list" id="courseList"><div class="empty" data-i18n="app.checkingApu">Checking APU data.</div></div>
       </div>
-      <div class="sidebar-body hidden" id="myPane">
-        <div class="my-list" id="myList"></div>
-      </div>
+      <div class="sidebar-body hidden" id="myPane"><div class="my-list" id="myList"></div></div>
     </aside>
 
     <main class="main">
       <div class="main-head">
-        <div class="plan-title">
-          <h2 id="planHeading">내 시간표</h2>
+        <div class="plan-title plan-title-with-presets">
+          <div class="plan-label-stack">
+            <h2 id="planHeading" data-i18n="app.mySchedule">My schedule</h2>
+            <div class="preset-switch" id="presetSwitch" aria-label="Schedule presets"><button class="active" data-preset="A">Plan A</button><button data-preset="B">Plan B</button><button data-preset="C">Plan C</button></div>
+          </div>
           <div class="quarter-switch"><button class="active" data-quarter="Q1">1Q</button><button data-quarter="Q2">2Q</button></div>
         </div>
         <div class="plan-metrics">
-          <div class="metric"><strong id="creditMetric">0 / 20</strong><span>학점</span></div>
-          <div class="metric"><strong id="daysMetric">0일</strong><span>등교일</span></div>
-          <div class="metric"><strong id="gapMetric">0</strong><span>빈 교시</span></div>
-          <div class="metric"><strong id="classMetric">0</strong><span>선택 Class</span></div>
+          <div class="metric"><strong id="creditMetric">0 / 20</strong><span data-i18n="app.credits">Credits</span></div>
+          <div class="metric"><strong id="daysMetric">0</strong><span data-i18n="app.campusDays">Campus days</span></div>
+          <div class="metric"><strong id="gapMetric">0</strong><span data-i18n="app.gaps">Free periods</span></div>
+          <div class="metric"><strong id="classMetric">0</strong><span data-i18n="app.selectedClasses">Selected classes</span></div>
         </div>
-        <div class="main-actions">
-          <button class="secondary-button" id="clearPlanButton">선택 초기화</button>
-          <button class="primary-button" id="fillButton">빈 학점 자동 채우기</button>
-        </div>
+        <div class="main-actions"><button class="secondary-button" id="clearPlanButton" data-i18n="app.clearSelection">Clear plan</button><button class="primary-button" id="fillButton" data-i18n="app.autofill">Auto-fill remaining credits</button></div>
       </div>
-      <div class="calendar-area">
-        <div class="calendar-card">
-          <div class="calendar-help"><span><strong>빈 칸을 클릭</strong>해서 그 시간의 수업을 찾거나 수업 불가 시간으로 지정하세요.</span><span id="quarterHelp">1Q 시간표</span></div>
-          <div id="calendar"></div>
-        </div>
-      </div>
+      <div class="calendar-area"><div class="calendar-card"><div class="calendar-help"><span><strong data-i18n="app.calendarHelpPrefix">Click an empty cell</strong> <span data-i18n="app.calendarHelpSuffix">to find courses at that time or mark it unavailable.</span></span><span id="quarterHelp">1Q schedule</span></div><div id="calendar"></div></div></div>
     </main>
   </div>
 </div>
 
 <aside class="drawer" id="settingsDrawer">
-  <div class="drawer-head"><strong>설정</strong><button class="icon-button" data-close-drawer>×</button></div>
+  <div class="drawer-head"><strong data-i18n="app.settings">Settings</strong><button class="icon-button" data-close-drawer>×</button></div>
   <div class="drawer-body">
+    <section class="drawer-section"><h3 data-i18n="settings.interface">Interface</h3><div class="drawer-field"><label data-i18n="settings.displayLanguage">Display language</label><select id="uiLanguage"><option value="en">English</option><option value="ja">日本語</option></select></div></section>
     <section class="drawer-section">
-      <h3>학생 정보</h3>
-      <div class="drawer-row"><div class="drawer-field"><label>College</label><select id="college"><option>APM</option><option>APS</option><option>ST</option></select></div><div class="drawer-field"><label>현재 Semester</label><select id="semesterLevel"></select></div></div>
-      <div class="drawer-row"><div class="drawer-field"><label>입학 언어 기준 / Track</label><select id="track"><option value="E">English Basis</option><option value="JST">Japanese Basis · English Standard</option><option value="JAT">Japanese Basis · English Advanced</option></select></div><div class="drawer-field"><label>목표 학점</label><input id="targetCredits" type="number" min="0" step="1" value="18"></div></div>
-      <div class="drawer-field"><label id="languageLevelLabel">반대 언어 · 이수 완료 최고 레벨</label><select id="languageLevel"></select><div class="drawer-help" id="languageLevelHelp">입학 기준과 언어 레벨을 바탕으로 단계형 언어수업을 자동 제외합니다.</div></div>
-      <label class="check-line"><input id="accelerated" type="checkbox"> Accelerated Graduation</label>
+      <h3 data-i18n="settings.student">Student profile</h3>
+      <div class="drawer-row"><div class="drawer-field"><label data-i18n="settings.college">College</label><select id="college"><option>APM</option><option>APS</option><option>ST</option></select></div><div class="drawer-field"><label data-i18n="settings.semester">Current semester</label><select id="semesterLevel"></select></div></div>
+      <div class="drawer-row"><div class="drawer-field"><label data-i18n="settings.track">Admission language / Track</label><select id="track"><option value="E">English Basis</option><option value="JST">Japanese Basis · English Standard</option><option value="JAT">Japanese Basis · English Advanced</option></select></div><div class="drawer-field"><label data-i18n="settings.targetCredits">Target credits</label><input id="targetCredits" type="number" min="0" step="1" value="18"></div></div>
+      <div class="drawer-field"><label id="languageLevelLabel" data-i18n="settings.completedLanguage">Opposite language · highest completed level</label><select id="languageLevel"></select><div class="drawer-help" id="languageLevelHelp" data-i18n="settings.languageHelp">Core language courses are filtered using your admission basis and completed level.</div></div>
+      <label class="check-line"><input id="accelerated" type="checkbox"> <span data-i18n="settings.accelerated">Accelerated Graduation</span></label>
     </section>
-    <section class="drawer-section">
-      <h3>University-registered / 확정 수업</h3>
-      <div class="fixed-add"><input id="universityCode" type="text" placeholder="Class code"><button class="primary-button" id="addUniversityButton">추가</button></div>
-      <div class="fixed-list" id="universityList"></div>
-      <div class="danger-note" style="margin-top:9px">대학이 배정한 언어·필수 수업은 여기 넣으세요. 이 수업은 시간표에서 제거하거나 막을 수 없습니다.</div>
-    </section>
-    <section class="drawer-section">
-      <h3>APU 공식 데이터</h3>
-      <div class="status-box" id="loadStatus">확인 중...</div>
-      <div class="drawer-actions"><button class="add" id="loadButton">공식 데이터 불러오기</button><button id="refreshButton">새로 받기</button></div>
-      <div class="status-box" id="syllabusSyncStatus" style="margin-top:10px">실라버스 링크: 데이터 로드 후 확인</div>
-      <div class="drawer-help">이 standalone 빌드는 AY2026 Fall APM 실라버스 mapping 836개를 내장합니다.</div>
-      <div class="drawer-help">Timetable 2026-09-01 · Subject List 2026-03-13</div>
-    </section>
+    <section class="drawer-section"><h3 data-i18n="settings.fixed">University-registered / fixed classes</h3><div class="fixed-add"><input id="universityCode" type="text" placeholder="Class code"><button class="primary-button" id="addUniversityButton" data-i18n="settings.add">Add</button></div><div class="fixed-list" id="universityList"></div><div class="danger-note" style="margin-top:9px" data-i18n="settings.fixedHelp">Add language or required classes assigned by APU here. Fixed classes cannot be removed by planning rules or blocked time slots.</div></section>
+    <section class="drawer-section"><h3 data-i18n="settings.officialData">APU official data</h3><div class="status-box" id="loadStatus" data-i18n="settings.checking">Checking...</div><div class="drawer-actions"><button class="add" id="loadButton" data-i18n="settings.loadOfficial">Load official data</button><button id="refreshButton" data-i18n="settings.refresh">Refresh</button></div><div class="status-box" id="syllabusSyncStatus" style="margin-top:10px" data-i18n="settings.syllabusPending">Syllabus links: check after data loads</div><div class="drawer-help" data-i18n="settings.bundleInfo">This standalone build includes 836 AY2026 Fall APM syllabus mappings.</div><div class="drawer-help" data-i18n="settings.sourceInfo">Timetable 2026-09-01 · Subject List 2026-03-13</div></section>
   </div>
 </aside>
-
-<aside class="drawer" id="detailDrawer">
-  <div class="drawer-head"><strong>Class 상세</strong><button class="icon-button" data-close-drawer>×</button></div>
-  <div class="drawer-body" id="detailBody"></div>
-</aside>
-
-<div class="suggestions hidden" id="suggestions"><div class="suggest-head"><div><strong>자동으로 채울 수 있는 시간표</strong><span id="suggestText"></span></div><button class="icon-button" id="closeSuggestions">×</button></div><div class="suggest-list" id="suggestList"></div></div>
+<aside class="drawer" id="detailDrawer"><div class="drawer-head"><strong data-i18n="app.detail">Class details</strong><button class="icon-button" data-close-drawer>×</button></div><div class="drawer-body" id="detailBody"></div></aside>
+<div class="suggestions hidden" id="suggestions"><div class="suggest-head"><div><strong data-i18n="suggestions.title">Auto-fill alternatives</strong><span id="suggestText"></span></div><button class="icon-button" id="closeSuggestions">×</button></div><div class="suggest-list" id="suggestList"></div></div>
 <div class="toast" id="toast"></div>
-
-<script src="/app-core.js"></script>
-<script src="/app-ui.js"></script>
-<script src="/app-profile.js"></script>
-<script src="/app-events.js"></script>
+<script src="/app-i18n.js"></script><script src="/app-core.js"></script><script src="/app-ui.js"></script><script src="/app-profile.js"></script><script src="/app-events.js"></script>
 </body>
 </html>
