@@ -1,4 +1,4 @@
-# APU Syllabus Collector V1.4
+# APU Syllabus Collector V1.5
 
 APU Schedule Builder와 분리된 **독립 자동 수집 유틸리티**입니다.
 
@@ -61,3 +61,9 @@ py -3 -m unittest discover -s tests -v
 - 검색과 browser session은 worker별로 독립적이지만 `data/syllabus_links.json`, 실패 상태, state 저장은 기존과 같이 lock으로 직렬화합니다.
 - Output Log에는 `[W01 P12/167]`처럼 worker와 자기 파트 내 진행 위치를 표시합니다.
 - 중지/일시정지는 실행 중인 모든 worker에 적용됩니다.
+
+## V1.5 Windows-safe result saving
+
+- `syllabus_links.json` 저장 시 worker/process별로 겹치지 않는 고유 임시 파일을 사용합니다.
+- Windows Defender, 동기화 도구 등의 짧은 파일 잠금으로 `WinError 5/32/33`이 발생하면 짧은 backoff로 최대 6번 자동 재시도합니다.
+- 재시도 후에도 저장이 실패하면 해당 Class를 `save-failed`로 기록하고 다음 Class로 계속 진행합니다. 저장 실패 하나 때문에 browser worker 전체가 종료되지 않습니다.
