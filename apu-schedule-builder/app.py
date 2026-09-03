@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 
 import app_backend as _backend
 from aplus_reviews import enrich_schedule_data
+from language_rules import annotate_schedule_data, filter_candidate_subjects
 from syllabus_mapping import load_verified_mapping, mapping_fingerprint, parse_direct_syllabus_url
 from app_backend import *  # noqa: F401,F403 - preserve the public API used by tests and scripts
 
@@ -16,11 +17,14 @@ from app_backend import *  # noqa: F401,F403 - preserve the public API used by t
 _original_download_file = _backend.download_file
 _original_load_or_build_data = _backend.load_or_build_data
 _original_do_GET = _backend.Handler.do_GET
+_original_solve_variant = _backend.solve_variant
 _STATIC_FILES = {
     "/style.css": ("style.css", "text/css; charset=utf-8"),
     "/app-core.js": ("app-core.js", "application/javascript; charset=utf-8"),
     "/app-ui.js": ("app-ui.js", "application/javascript; charset=utf-8"),
     "/app-events.js": ("app-events.js", "application/javascript; charset=utf-8"),
+    "/app-profile.js": ("app-profile.js", "application/javascript; charset=utf-8"),
+    "/aplus.css": ("aplus.css", "text/css; charset=utf-8"),
 }
 
 
@@ -159,11 +163,19 @@ def _load_or_build_data_with_mapping_cache(college: str, allow_download: bool = 
 
     # A+ is optional live enrichment. It is applied after the APU cache write so
     # ratings never become stale data inside the normalized timetable cache.
-    return enrich_schedule_data(data)
+    return enrich_schedule_data(annotate_schedule_data(data))
 
 
 _backend.load_or_build_data = _load_or_build_data_with_mapping_cache
 load_or_build_data = _load_or_build_data_with_mapping_cache
+
+
+def _solve_variant_with_language_profile(data, config, variant, beam_size=220):
+    return _original_solve_variant(filter_candidate_subjects(data, config), config, variant, beam_size)
+
+
+_backend.solve_variant = _solve_variant_with_language_profile
+solve_variant = _solve_variant_with_language_profile
 
 
 def _do_GET_with_static_assets(self) -> None:
