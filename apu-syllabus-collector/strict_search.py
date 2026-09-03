@@ -121,6 +121,19 @@ def grouped_anchor_url(driver, code: str, year: int) -> SearchURL | None:
     return None
 
 
+def _remember_observed(observed_urls, url: str, year: int) -> None:
+    if observed_urls is None:
+        return
+    parsed = parse_direct_url(url)
+    if not parsed or parsed[0] != int(year):
+        return
+    try:
+        observed_urls.add(url)
+    except AttributeError:
+        if url not in observed_urls:
+            observed_urls.append(url)
+
+
 def _window_handles(driver) -> list[str]:
     try:
         return list(driver.window_handles or [])
@@ -152,9 +165,14 @@ def _direct_url_from_open_windows(
     *,
     origin_handle: str | None,
     before_handles: set[str],
+    observed_urls=None,
 ) -> str | None:
     handles = _window_handles(driver)
     if not handles:
+        try:
+            _remember_observed(observed_urls, str(driver.current_url or ""), year)
+        except Exception:
+            pass
         direct = current_direct_url(driver, code, year)
         if direct:
             return direct
@@ -169,6 +187,10 @@ def _direct_url_from_open_windows(
     for handle in ordered:
         if not _switch_window(driver, handle):
             continue
+        try:
+            _remember_observed(observed_urls, str(driver.current_url or ""), year)
+        except Exception:
+            pass
         direct = current_direct_url(driver, code, year)
         if direct:
             found = direct
@@ -201,12 +223,22 @@ def _close_new_windows(driver, before_handles: set[str], origin_handle: str | No
         _switch_window(driver, remaining[0])
 
 
-def open_result_for_code(driver, code: str, year: int, timeout: float = 4.0) -> str | None:
+def open_result_for_code(
+    driver,
+    code: str,
+    year: int,
+    timeout: float = 4.0,
+    observed_urls=None,
+) -> str | None:
     token = re.compile(rf"(?<!\d){re.escape(str(code))}(?!\d)")
     selector = "a,button,[role='link'],[role='button'],tr,[role='row'],li,[data-row-key-value],[onclick]"
     deadline = time.monotonic() + timeout
 
     while time.monotonic() < deadline:
+        try:
+            _remember_observed(observed_urls, str(driver.current_url or ""), year)
+        except Exception:
+            pass
         direct = current_direct_url(driver, code, year)
         if direct:
             return direct
@@ -215,6 +247,7 @@ def open_result_for_code(driver, code: str, year: int, timeout: float = 4.0) -> 
             return links.get(f"{year}:{code}")
         grouped = grouped_anchor_url(driver, code, year)
         if grouped:
+            _remember_observed(observed_urls, str(grouped), year)
             return grouped
 
         candidates = []
@@ -253,6 +286,7 @@ def open_result_for_code(driver, code: str, year: int, timeout: float = 4.0) -> 
                         year,
                         origin_handle=origin_handle,
                         before_handles=before_handles,
+                        observed_urls=observed_urls,
                     )
                     if direct:
                         return direct
@@ -263,6 +297,7 @@ def open_result_for_code(driver, code: str, year: int, timeout: float = 4.0) -> 
                     year,
                     origin_handle=origin_handle,
                     before_handles=before_handles,
+                    observed_urls=observed_urls,
                 )
                 if direct:
                     return direct
