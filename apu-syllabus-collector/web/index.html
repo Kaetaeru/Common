@@ -41,7 +41,7 @@
   <section class="current card">
     <div class="current-row"><div><span class="label">현재 작업</span><strong id="currentText">대기 중</strong></div><span id="outputFile">data/syllabus_links.json</span></div>
     <div class="progress"><div id="progressBar"></div></div>
-    <div class="notice">Class 목록을 브라우저 수만큼 고정 파트로 나눠 처리합니다. 성공한 링크는 한 건씩 즉시 저장되고, 브라우저가 종료되면 해당 worker만 재시작합니다.</div>
+    <div class="notice">모든 브라우저가 하나의 공유 작업 목록에서 다음 Class를 가져갑니다. 빠른 worker는 바로 다음 Class를 이어서 처리하고, 브라우저가 종료되면 해당 worker만 재시작합니다.</div>
   </section>
 
   <main>
