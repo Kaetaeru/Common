@@ -1,4 +1,4 @@
-# APU Syllabus Collector V1.6
+# APU Syllabus Collector V1.7
 
 APU Schedule Builder와 분리된 **독립 자동 수집 유틸리티**입니다.
 
@@ -11,7 +11,7 @@ Windows에서 `run_windows.bat`를 더블클릭합니다. 브라우저 UI는 기
 1. College(APM/APS/ST)를 선택합니다.
 2. `자동 수집 시작`을 누릅니다. Class 목록이 없으면 공식 timetable도 자동으로 준비합니다. (`Class 목록 불러오기`는 사전 확인용입니다.)
 3. 수집 중에는 현재 Class, 확보/남음/실패 수, 진행률, Output Log를 확인합니다.
-4. 실패 항목은 마지막에 `실패만 재시도`로 다시 돌릴 수 있습니다.
+4. 실패 항목은 마지막에 `실패 N개 집중 재시도`로 더 깊게 다시 돌릴 수 있습니다.
 
 ## 저장 방식
 
@@ -68,3 +68,7 @@ py -3 -m unittest discover -s tests -v
 - `syllabus_links.json` 저장 시 worker/process별로 겹치지 않는 고유 임시 파일을 사용합니다.
 - Windows Defender, 동기화 도구 등의 짧은 파일 잠금으로 `WinError 5/32/33`이 발생하면 짧은 backoff로 최대 6번 자동 재시도합니다.
 - 재시도 후에도 저장이 실패하면 해당 Class를 `save-failed`로 기록하고 다음 Class로 계속 진행합니다. 저장 실패 하나 때문에 browser worker 전체가 종료되지 않습니다.
+
+## V1.7 focused retry
+
+`실패 N개 집중 재시도`는 `data/collector_state.json`의 현재 `failed` Class만 대상으로 합니다. 이미 저장된 Class는 제외합니다. 일반 수집은 기존 빠른 설정(2회 시도, 최대 4페이지, 결과 대기 4초)을 유지하고, 집중 재시도에서만 Class code 검색을 최대 4회 수행하며 결과를 더 오래 기다리고 최대 6페이지까지 확인합니다. Subject Name 검색은 사용하지 않습니다.
