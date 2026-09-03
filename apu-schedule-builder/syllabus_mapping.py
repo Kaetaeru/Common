@@ -53,6 +53,12 @@ def mapping_source_files(data_dir: Path) -> list[Path]:
     batch_root = data_dir / "syllabus-links"
     if batch_root.is_dir():
         files.extend(sorted(path for path in batch_root.rglob("*.json") if path.is_file()))
+
+    # Standalone collector is a sibling project under Common/. The Schedule Builder
+    # only consumes its verified output; it never imports or launches the collector.
+    external = data_dir.parent.parent / "apu-syllabus-collector" / "data" / "syllabus_links.json"
+    if external.is_file():
+        files.append(external)
     return files
 
 
@@ -66,7 +72,10 @@ def scan_mapping_sources(data_dir: Path) -> dict[str, Any]:
     duplicate_count = 0
 
     for path in files:
-        relative = path.relative_to(data_dir).as_posix()
+        try:
+            relative = path.relative_to(data_dir).as_posix()
+        except ValueError:
+            relative = path.relative_to(data_dir.parent.parent).as_posix() if path.is_relative_to(data_dir.parent.parent) else str(path)
         source = {"path": relative, "entries": 0, "valid": 0, "invalid": 0}
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>APU Syllabus Collector</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <div class="eyebrow">Standalone Utility</div>
+      <h1>APU Syllabus Collector</h1>
+      <p>Class code별 APU direct syllabus URL을 자동 수집하고 즉시 저장합니다.</p>
+    </div>
+    <div class="header-status"><span id="runDot" class="dot"></span><strong id="runState">대기</strong><span id="termText">Class 목록 미로드</span></div>
+  </header>
+
+  <section class="controls card">
+    <div class="field"><label>College</label><select id="college"><option>APM</option><option>APS</option><option>ST</option></select></div>
+    <label class="check"><input id="headless" type="checkbox">브라우저 숨김(Headless)</label>
+    <button id="loadButton">Class 목록 불러오기</button>
+    <button id="refreshButton" class="secondary">공식 목록 새로 받기</button>
+    <button id="startButton" class="primary">자동 수집 시작</button>
+    <button id="pauseButton" class="secondary">일시정지</button>
+    <button id="resumeButton" class="secondary">계속</button>
+    <button id="stopButton" class="danger">중지</button>
+    <button id="retryButton" class="secondary">실패만 재시도</button>
+  </section>
+
+  <section class="stats">
+    <div class="stat card"><span>전체 Class</span><strong id="total">0</strong></div>
+    <div class="stat card ok"><span>확보</span><strong id="mapped">0</strong></div>
+    <div class="stat card"><span>남음</span><strong id="remaining">0</strong></div>
+    <div class="stat card bad"><span>실패</span><strong id="failed">0</strong></div>
+    <div class="stat card"><span>진행률</span><strong id="progressText">0%</strong></div>
+  </section>
+
+  <section class="current card">
+    <div class="current-row"><div><span class="label">현재 작업</span><strong id="currentText">대기 중</strong></div><span id="outputFile">data/syllabus_links.json</span></div>
+    <div class="progress"><div id="progressBar"></div></div>
+    <div class="notice">성공한 링크는 한 건씩 즉시 저장됩니다. 중간에 종료해도 다음 실행에서 이미 확보한 Class는 자동으로 건너뜁니다.</div>
+  </section>
+
+  <main>
+    <section class="card result-panel">
+      <div class="panel-head"><div><span class="eyebrow">Results</span><h2>Class 상태</h2></div><input id="filter" type="search" placeholder="Class code / 과목명 검색"></div>
+      <div class="table-wrap"><table><thead><tr><th>Class</th><th>과목</th><th>상태</th><th>Direct URL</th></tr></thead><tbody id="rows"><tr><td colspan="4" class="empty">Class 목록을 불러오세요.</td></tr></tbody></table></div>
+    </section>
+
+    <section class="card log-panel">
+      <div class="panel-head"><div><span class="eyebrow">Output Log</span><h2>자동 수집 로그</h2></div><button id="clearLog" class="secondary small">화면 로그 지우기</button></div>
+      <div id="log" class="log"><div class="log-line muted">Collector 대기 중</div></div>
+      <div class="legend"><span class="ok-text">OK 저장 완료</span><span class="warn-text">WARN 재시도/중지</span><span class="bad-text">ERROR 미확보</span></div>
+    </section>
+  </main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

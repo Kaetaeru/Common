@@ -8,7 +8,6 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import app
-import syllabus_collector
 from syllabus_mapping import load_verified_mapping, parse_direct_syllabus_url, scan_mapping_sources
 
 
@@ -63,6 +62,18 @@ class SyllabusMappingTests(unittest.TestCase):
             self.assertFalse(report["mapping"])
             self.assertEqual(len(report["problems"]), 1)
 
+
+    def test_standalone_collector_output_is_a_mapping_source(self):
+        with tempfile.TemporaryDirectory() as td:
+            common = Path(td)
+            data_dir = common / "apu-schedule-builder" / "data"
+            data_dir.mkdir(parents=True)
+            collector_output = common / "apu-syllabus-collector" / "data" / "syllabus_links.json"
+            self.write_json(collector_output, {"2026:10121": PSYCHOLOGY})
+            report = scan_mapping_sources(data_dir)
+            self.assertEqual(report["mapping"], {"2026:10121": PSYCHOLOGY})
+            self.assertEqual(report["sources"][0]["path"], "apu-syllabus-collector/data/syllabus_links.json")
+
     def test_mapping_change_rebuilds_cached_normalized_data_when_sources_exist(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -97,40 +108,6 @@ class SyllabusMappingTests(unittest.TestCase):
             self.write_json(data_dir / "syllabus-links/2026-fall/batch-001.json", {"2026:10121": PSYCHOLOGY})
             with patch.object(app._backend, "DATA_DIR", data_dir):
                 self.assertEqual(app.load_syllabus_link_overrides(), {"2026:10121": PSYCHOLOGY})
-
-
-class CollectorRegressionTests(unittest.TestCase):
-    def test_plain_direct_url_input_becomes_mapping_pair(self):
-        pairs, errors = syllabus_collector._parse_input_pairs(PSYCHOLOGY)
-        self.assertFalse(errors)
-        self.assertEqual(pairs, [("2026:10121", PSYCHOLOGY)])
-
-    def test_collector_status_proves_mapping_is_attached_to_app_data(self):
-        with tempfile.TemporaryDirectory() as td:
-            data_dir = Path(td)
-            (data_dir / "syllabus-links/2026-fall").mkdir(parents=True)
-            (data_dir / "syllabus-links/2026-fall/batch-001.json").write_text(
-                json.dumps({"2026:10121": PSYCHOLOGY}), encoding="utf-8"
-            )
-            fake_data = {
-                "term": "AY2026 Fall",
-                "academicYear": 2026,
-                "academicSeason": "FALL",
-                "sections": [{
-                    "classCode": "10121",
-                    "name": "Psychology",
-                    "instructor": "Prof P",
-                    "term": "SEMESTER",
-                    "syllabusUrl": PSYCHOLOGY,
-                }],
-            }
-            with patch.object(syllabus_collector, "DATA_DIR", data_dir), patch.object(
-                syllabus_collector, "_dataset", return_value=fake_data
-            ):
-                status = syllabus_collector.collector_status("APM")
-            self.assertTrue(status["readerVerified"])
-            self.assertEqual(status["readerExpected"], 1)
-            self.assertEqual(status["readerAttached"], 1)
 
 
 if __name__ == "__main__":

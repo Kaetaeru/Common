@@ -1,0 +1,21 @@
+const $=id=>document.getElementById(id);
+let lastStatus=null;
+let hideBefore=0;
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function post(path,payload={}){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const body=await r.json();if(!r.ok||body.ok===false)throw new Error(body.error||'요청 실패');return body;}
+function setBusy(s){const running=!!s.running,paused=!!s.paused;$('runState').textContent=running?(paused?'일시정지':'수집 중'):'대기';$('runDot').className=`dot${running?(paused?' paused':' running'):''}`;$('startButton').disabled=running;$('loadButton').disabled=running;$('refreshButton').disabled=running;$('pauseButton').disabled=!running||paused;$('resumeButton').disabled=!running||!paused;$('stopButton').disabled=!running;$('retryButton').disabled=running||!s.failed;}
+function renderRows(s){const q=$('filter').value.trim().toLowerCase();const rows=(s.rows||[]).filter(r=>!q||`${r.classCode} ${r.name} ${r.instructor||''}`.toLowerCase().includes(q));$('rows').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(r.classCode)}</td><td><strong>${esc(r.name)}</strong><div style="color:var(--muted);margin-top:2px">${esc(r.instructor||'')}</div></td><td><span class="status ${esc(r.status)}">${r.status==='mapped'?'확보':r.status==='failed'?'실패':'대기'}</span>${r.failure?`<div style="color:var(--red);font-size:8px;margin-top:4px">${esc(r.failure)}</div>`:''}</td><td>${r.url?`<a class="url" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a>`:'-'}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">표시할 Class가 없습니다.</td></tr>';}
+function renderLogs(s){const logs=(s.logs||[]).slice(hideBefore);$('log').innerHTML=logs.length?logs.map(e=>`<div class="log-line ${esc(e.level)}">[${esc(e.time)}] ${esc(e.level.toUpperCase().padEnd(5))} ${esc(e.message)}</div>`).join(''):'<div class="log-line muted">표시할 로그가 없습니다.</div>';$('log').scrollTop=$('log').scrollHeight;}
+function render(s){lastStatus=s;$('termText').textContent=s.term||'Class 목록 미로드';$('total').textContent=s.total||0;$('mapped').textContent=s.mapped||0;$('remaining').textContent=s.remaining||0;$('failed').textContent=s.failed||0;$('progressText').textContent=`${Number(s.progress||0).toFixed(1)}%`;$('progressBar').style.width=`${Math.min(100,Number(s.progress||0))}%`;$('outputFile').textContent=s.outputFile||'data/syllabus_links.json';$('currentText').textContent=s.current?`${s.current.index}/${s.current.queueTotal} · Class ${s.current.classCode} · ${s.current.name}`:'대기 중';setBusy(s);renderRows(s);renderLogs(s);}
+async function refresh(){try{const r=await fetch(`/api/status?college=${encodeURIComponent($('college').value)}`);render(await r.json())}catch(e){$('runState').textContent=e.message}}
+$('loadButton').addEventListener('click',async()=>{try{await post('/api/load-data',{college:$('college').value,refresh:false});await refresh()}catch(e){alert(e.message)}});
+$('refreshButton').addEventListener('click',async()=>{if(!confirm('APU 공식 timetable을 다시 다운로드할까요?'))return;try{await post('/api/load-data',{college:$('college').value,refresh:true});await refresh()}catch(e){alert(e.message)}});
+$('startButton').addEventListener('click',async()=>{try{await post('/api/start',{college:$('college').value,headless:$('headless').checked});await refresh()}catch(e){alert(e.message)}});
+$('pauseButton').addEventListener('click',async()=>{try{await post('/api/pause');await refresh()}catch(e){alert(e.message)}});
+$('resumeButton').addEventListener('click',async()=>{try{await post('/api/resume');await refresh()}catch(e){alert(e.message)}});
+$('stopButton').addEventListener('click',async()=>{try{await post('/api/stop');await refresh()}catch(e){alert(e.message)}});
+$('retryButton').addEventListener('click',async()=>{try{await post('/api/retry-failed',{college:$('college').value,headless:$('headless').checked});await refresh()}catch(e){alert(e.message)}});
+$('filter').addEventListener('input',()=>lastStatus&&renderRows(lastStatus));
+$('college').addEventListener('change',refresh);
+$('clearLog').addEventListener('click',()=>{hideBefore=(lastStatus?.logs||[]).length;renderLogs(lastStatus||{logs:[]})});
+refresh();setInterval(refresh,1000);

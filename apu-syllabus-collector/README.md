@@ -1,0 +1,50 @@
+# APU Syllabus Collector V1.0
+
+APU Schedule Builder와 분리된 **독립 자동 수집 유틸리티**입니다.
+
+목표는 현재 학기의 Class code 목록을 APU 공식 timetable에서 읽은 뒤, APU 공개 syllabus 검색을 Chrome/Edge로 자동 순회하여 `Class code -> direct syllabus URL`을 확보하는 것입니다.
+
+## 실행
+
+Windows에서 `run_windows.bat`를 더블클릭합니다. 브라우저 UI는 기본적으로 `http://127.0.0.1:8766/`에서 열립니다.
+
+1. College(APM/APS/ST)를 선택합니다.
+2. `자동 수집 시작`을 누릅니다. Class 목록이 없으면 공식 timetable도 자동으로 준비합니다. (`Class 목록 불러오기`는 사전 확인용입니다.)
+3. 수집 중에는 현재 Class, 확보/남음/실패 수, 진행률, Output Log를 확인합니다.
+4. 실패 항목은 마지막에 `실패만 재시도`로 다시 돌릴 수 있습니다.
+
+## 저장 방식
+
+- 결과: `data/syllabus_links.json`
+- 실행 상태: `data/collector_state.json`
+- 텍스트 로그: `data/collector.log`
+- 공식 timetable 캐시: `data/source/`
+
+성공한 direct URL은 **한 건씩 즉시** `data/syllabus_links.json`에 저장합니다. 프로그램이 중간에 종료되어도 다음 실행에서 이미 확보한 Class는 건너뜁니다.
+
+URL은 다음 조건을 모두 만족할 때만 성공으로 저장합니다.
+
+- host가 `syllabus.apu.ac.jp`
+- path가 `/syllabus/s/a-syllabus/<record-id>/<year><class-code>` 형식
+- URL의 연도와 현재 timetable 연도가 일치
+- URL 마지막 Class code가 현재 검색 중인 Class code와 정확히 일치
+
+Salesforce record ID는 추측하지 않습니다.
+
+## 자동 수집 동작
+
+기본 검색 단위는 Subject가 아니라 **Class code 하나**입니다. 각 Class code를 검색하고 정확히 일치하는 direct URL만 수집합니다. Class code 검색으로 찾지 못한 경우에만 Subject 이름을 fallback으로 검색하며, 그 결과에서도 현재 Class code가 정확히 일치하는 URL만 채택합니다.
+
+검색창 값이 제대로 바뀌지 않거나 검색이 실패하면 포털을 다시 열고 재시도합니다. 그래도 찾지 못하면 실패로 기록하고 다음 Class로 넘어갑니다.
+
+## Schedule Builder 연동
+
+이 프로젝트가 `Common/apu-syllabus-collector/`에 있고 Schedule Builder가 형제 폴더 `Common/apu-schedule-builder/`에 있으면, Schedule Builder는 이 Collector의 `data/syllabus_links.json`을 자동으로 읽습니다. Collector 자체는 Schedule Builder를 import하거나 실행하지 않습니다.
+
+## 검증
+
+```powershell
+py -3 -m unittest discover -s tests -v
+```
+
+실제 APU Salesforce 페이지의 DOM은 외부 서비스이므로, 단위 테스트와 별도로 Windows Chrome/Edge에서 실제 수집 로그를 확인해야 최종 통합 검증이 됩니다.

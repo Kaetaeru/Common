@@ -1,4 +1,4 @@
-# APU Schedule Builder V1.4
+# APU Schedule Builder V1.5
 
 Ritsumeikan APU AY2026 Fall 2023 Curriculum용 로컬 시간표 생성기입니다.
 
@@ -16,27 +16,19 @@ py -3 -m pip install -r requirements.txt
 py -3 app.py
 ```
 
-## V1.4 Syllabus Link Collector
+## V1.5 Standalone Syllabus Collector 연동
 
-실라버스 링크 수집과 검증을 시간표 본체에서 분리했습니다. `run_syllabus_collector.bat`를 더블클릭하면 전용 Collector UI가 `127.0.0.1:8766`에서 열립니다.
+Syllabus 수집은 Schedule Builder 안에서 하지 않습니다. 별도 프로젝트 `Common/apu-syllabus-collector/`가 APU 공개 syllabus를 자동 순회하고 `data/syllabus_links.json`을 생성합니다.
 
-Collector는 시간표 앱과 **같은 `syllabus_mapping.py` reader**를 사용하므로, Collector의 판독 성공과 실제 앱의 판독 방식이 서로 다르지 않습니다.
+Schedule Builder의 역할은 **수집된 mapping을 읽고 Class에 연결하는 것뿐**입니다. 두 프로젝트가 `Common/` 아래 형제 폴더로 있으면 다음 파일을 자동으로 읽습니다.
 
-Collector에서 확인할 수 있는 것:
+```text
+Common/apu-syllabus-collector/data/syllabus_links.json
+```
 
-- 로드된 전체 Class / repository direct link / 미매핑 / invalid·conflict 수
-- `data/syllabus_links.json`과 `data/syllabus-links/**/*.json` 각 파일의 판독 로그
-- 같은 key의 같은 URL은 안전한 duplicate로 처리
-- 같은 key의 서로 다른 URL은 conflict로 처리하고 앱에서 사용하지 않음
-- repository mapping이 실제 수업의 `syllabusUrl`에 **N/N개 정확히 붙었는지** attachment check
-- 다음 미매핑 Class 1~200개를 별도 수집 세션용으로 복사
-- JSON 또는 direct URL 목록 붙여넣기 → AY/Class code 검증 → 검증된 JSON 출력
-- 검증 결과를 `data/syllabus-links/<term>/batch-XXX.json`으로 로컬 저장
-- 모든 판독/검증/오류를 Output Log UI에 표시하고 복사 가능
+기존 `apu-schedule-builder/data/syllabus_links.json`과 `data/syllabus-links/**/*.json`도 수동 override/기존 데이터 호환을 위해 계속 읽습니다. 같은 Class에 서로 다른 direct URL이 들어오면 conflict로 보고 해당 mapping을 사용하지 않습니다.
 
-여러 ChatGPT 수집 세션을 병렬로 돌릴 때는 세션마다 다른 batch 파일만 수정하세요. 예를 들어 `batch-001.json`, `batch-002.json`처럼 나누면 같은 파일을 동시에 덮어쓰는 문제를 피할 수 있습니다. batch 규칙은 `data/syllabus-links/2026-fall/README.md`에 있습니다.
-
-시간표 앱은 legacy `data/syllabus_links.json`과 모든 batch JSON을 자동 병합해서 읽습니다. mapping 내용이 바뀌면 source XLSX가 있는 경우 normalized cache를 다시 만들어 예전 mapping URL이 캐시에 남지 않게 합니다. source XLSX가 없어 cache를 재검증할 수 없는 경우 Collector가 이를 오류 상태로 표시합니다.
+Schedule Builder에서 Selenium 자동 수집 버튼과 내장 Collector는 제거했습니다. 자동 수집의 진행률, 현재 Class, 성공/실패, 재시도, Output Log는 standalone Collector UI에서 확인합니다.
 
 ## V1.3 Windows HTTPS 인증서 처리
 
@@ -70,19 +62,6 @@ V1.2부터 다크모드/강한 경계 UI와 Class 중심 시간표를 유지하�
 - **Meeting**: 한 Class를 구성하는 요일/교시 블록
 
 따라서 같은 일본어 과목에 Class A/B/C가 있고 시간표가 서로 다르면 세 Class를 별개의 선택지로 표시합니다. Class B를 선택하면 Class B의 모든 meeting이 함께 시간표에 들어갑니다.
-
-### 보조 자동 실라버스 동기화
-
-- 설정 → **자동 검색 동기화 (보조)**를 누르면 Chrome 또는 Edge가 APU 공개 실라버스 검색을 엽니다. 대량 수집은 V1.4 Collector와 batch 파일 방식을 권장합니다.
-- 기본 동기화는 각 Class code를 하나씩 검색합니다. 검색창의 실제 값이 새 code로 바뀌지 않으면 성공으로 처리하지 않고 포털을 다시 연 뒤 재시도합니다.
-- Class code로 못 찾은 항목에만 Subject 이름 검색을 최종 fallback으로 사용합니다.
-- 결과 페이지가 여러 장이면 `Next / 次へ`를 따라가며 direct link를 수집합니다.
-- direct URL은 `연도 + Class code`가 현재 timetable과 정확히 일치할 때만 저장합니다.
-- 자동 검색으로 찾은 링크는 legacy `data/syllabus_links.json`에 저장합니다. 수동/병렬 수집 결과는 `data/syllabus-links/<term>/batch-XXX.json`에 저장합니다.
-- 설정 화면에서 현재 `direct link 확보 수 / 전체 Class 수`를 표시합니다.
-- Salesforce Lightning의 일반 DOM뿐 아니라 중첩된 open Shadow DOM 안의 검색 입력, 버튼, 결과 링크까지 재귀적으로 찾습니다.
-- Salesforce 컴포넌트가 늦게 렌더링되는 경우를 위해 고정 sleep 대신 검색 컨트롤이 실제 나타날 때까지 기다립니다.
-- 그래도 검색 UI를 찾지 못하면 `data/syllabus_sync_debug/page.html`, `page.png`, `controls.json`을 남깁니다.
 
 ### 기존 direct link 처리
 
