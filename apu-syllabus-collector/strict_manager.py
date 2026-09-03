@@ -14,6 +14,10 @@ DEFAULT_WORKER_COUNT = 5
 MAX_WORKER_COUNT = 10
 BROWSER_START_ATTEMPTS = 3
 BROWSER_RESTARTS_PER_CLASS = 2
+FOCUSED_SEARCH_ATTEMPTS = 4
+FOCUSED_RESULT_PAGES = 6
+FOCUSED_RESULT_TIMEOUT = 8.0
+FOCUSED_RELOAD_WAIT = 1.2
 
 
 class CollectionManager(BaseCollectionManager):
@@ -63,7 +67,15 @@ class CollectionManager(BaseCollectionManager):
         )
         self.thread.start()
 
-    def _collect_wanted(self, driver, *, year: int, code: str, max_pages: int) -> str | None:
+    def _collect_wanted(
+        self,
+        driver,
+        *,
+        year: int,
+        code: str,
+        max_pages: int,
+        result_timeout: float = 4.0,
+    ) -> str | None:
         for _ in range(max_pages):
             url = current_direct_url(driver, code, year)
             if url:
@@ -71,7 +83,7 @@ class CollectionManager(BaseCollectionManager):
             url = _page_links(driver, {code}, year).get(f"{year}:{code}")
             if url:
                 return url
-            url = open_result_for_code(driver, code, year)
+            url = open_result_for_code(driver, code, year, timeout=result_timeout)
             if url:
                 return url
             if not _click_text(driver, ["Next", "次へ", "次"]):
@@ -79,21 +91,48 @@ class CollectionManager(BaseCollectionManager):
             time.sleep(0.6)
         return None
 
-    def _search(self, driver, *, year: int, code: str, worker: str = "") -> tuple[str | None, str]:
+    def _search(
+        self,
+        driver,
+        *,
+        year: int,
+        code: str,
+        worker: str = "",
+        focused: bool = False,
+    ) -> tuple[str | None, str]:
         prefix = f"[{worker}] " if worker else ""
+        attempts = FOCUSED_SEARCH_ATTEMPTS if focused else 2
+        max_pages = FOCUSED_RESULT_PAGES if focused else 4
+        result_timeout = FOCUSED_RESULT_TIMEOUT if focused else 4.0
+        reload_wait = FOCUSED_RELOAD_WAIT if focused else 0.7
+        mode_label = "Focused Class Code" if focused else "Class Code"
         submitted = False
-        for attempt in range(2):
+        for attempt in range(attempts):
             if attempt:
                 driver.get(PORTAL_URL)
-                time.sleep(0.7)
+                time.sleep(reload_wait)
             if not submit_class_code_search(driver, code):
-                self.log("warn", f"{prefix}Class {code}: Class Code Search button not triggered (attempt {attempt + 1}/2)")
+                self.log(
+                    "warn",
+                    f"{prefix}Class {code}: {mode_label} Search button not triggered "
+                    f"(attempt {attempt + 1}/{attempts})",
+                )
                 continue
             submitted = True
-            self.log("info", f"{prefix}Class {code}: Class Code Search clicked (attempt {attempt + 1}/2)")
-            url = self._collect_wanted(driver, year=year, code=code, max_pages=4)
+            self.log(
+                "info",
+                f"{prefix}Class {code}: {mode_label} Search clicked "
+                f"(attempt {attempt + 1}/{attempts})",
+            )
+            url = self._collect_wanted(
+                driver,
+                year=year,
+                code=code,
+                max_pages=max_pages,
+                result_timeout=result_timeout,
+            )
             if url:
-                return url, "class-code"
+                return url, "class-code-focused" if focused else "class-code"
         return None, "class-code-result-not-found" if submitted else "class-code-search-not-triggered"
 
     def _open_browser(self, worker_id: int, *, headless: bool, restarted: bool = False):
@@ -129,6 +168,7 @@ class CollectionManager(BaseCollectionManager):
         year: int,
         mapping: dict[str, str],
         headless: bool,
+        focused: bool = False,
     ) -> None:
         label = f"W{worker_id:02d}"
         driver = None
@@ -166,7 +206,9 @@ class CollectionManager(BaseCollectionManager):
                     browser_restarts = 0
                     while not self.stop_event.is_set():
                         try:
-                            url, method = self._search(driver, year=year, code=code, worker=label)
+                            url, method = self._search(
+                                driver, year=year, code=code, worker=label, focused=focused
+                            )
                             break
                         except Exception as exc:
                             browser_restarts += 1
@@ -234,11 +276,20 @@ class CollectionManager(BaseCollectionManager):
             year = int(data["academicYear"])
             mapping = load_mapping(self.output_file)
             if retry_failed_only:
-                items = [c for c in data["classes"] if f"{year}:{c['classCode']}" in self.failed]
+                items = [
+                    c
+                    for c in data["classes"]
+                    if f"{year}:{c['classCode']}" in self.failed
+                    and f"{year}:{c['classCode']}" not in mapping
+                ]
+                self.log(
+                    "info",
+                    f"Focused retry work set: {len(items)} failed Class codes only; "
+                    f"already stored: {len(mapping)}",
+                )
             else:
                 items = [c for c in data["classes"] if f"{year}:{c['classCode']}" not in mapping]
-
-            self.log("info", f"Work set: {len(items)} Class codes; already stored: {len(mapping)}")
+                self.log("info", f"Work set: {len(items)} Class codes; already stored: {len(mapping)}")
             if not items:
                 self.log("ok", "Nothing to collect")
                 return
@@ -258,6 +309,7 @@ class CollectionManager(BaseCollectionManager):
                         "year": year,
                         "mapping": mapping,
                         "headless": headless,
+                        "focused": retry_failed_only,
                     },
                     daemon=True,
                     name=f"apu-syllabus-{worker_id:02d}",
