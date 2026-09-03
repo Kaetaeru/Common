@@ -35,6 +35,29 @@ class GroupedSyllabusTests(unittest.TestCase):
         self.assertEqual(found.group_codes, ("12347", "12348", "12349"))
         self.assertTrue(mapping.valid_direct_url(found, 2026, "12349"))
 
+    def test_open_result_accepts_observed_urls_and_records_grouped_url(self):
+        class Anchor:
+            def is_displayed(self): return True
+            def is_enabled(self): return True
+            def get_attribute(self, name): return GROUP_URL if name == "href" else ""
+
+        anchor = Anchor()
+
+        class Driver:
+            current_url = "https://syllabus.apu.ac.jp/syllabus/s/?language=en_US"
+            page_source = "<html></html>"
+            def execute_script(self, script, *args):
+                if "const selector = arguments[0]" in script:
+                    return [anchor]
+                if "const el = arguments[0]" in script:
+                    return GROUP_TEXT
+                return None
+
+        observed = set()
+        found = strict_search.open_result_for_code(Driver(), "12349", 2026, observed_urls=observed)
+        self.assertEqual(str(found), GROUP_URL)
+        self.assertIn(GROUP_URL, observed)
+
     def test_grouped_anchor_rejects_unlisted_target(self):
         class Anchor:
             def is_displayed(self): return True
