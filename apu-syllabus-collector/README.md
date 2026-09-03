@@ -1,4 +1,4 @@
-# APU Syllabus Collector V1.3
+# APU Syllabus Collector V1.4
 
 APU Schedule Builder와 분리된 **독립 자동 수집 유틸리티**입니다.
 
@@ -51,11 +51,13 @@ py -3 -m unittest discover -s tests -v
 
 실제 APU Salesforce 페이지의 DOM은 외부 서비스이므로, 단위 테스트와 별도로 Windows Chrome/Edge에서 실제 수집 로그를 확인해야 최종 통합 검증이 됩니다.
 
-## V1.3 parallel collection
+## V1.4 fixed-part parallel collection
 
-- 자동 수집은 최대 **10개의 독립 Chrome/Edge browser worker**를 동시에 실행합니다.
-- 모든 worker는 같은 Class queue에서 다음 항목을 가져가므로 느린 Class 때문에 한 worker가 막혀도 다른 worker는 계속 진행합니다.
-- 검색은 기존과 동일하게 **Class Code 전용 입력 + 실제 Search 버튼**만 사용합니다. Subject 이름 검색은 하지 않습니다.
-- 각 worker는 자기 browser session을 사용하지만 `data/syllabus_links.json`, 실패 상태, state 저장은 lock으로 직렬화하여 서로 덮어쓰지 않습니다.
-- Output Log에는 `[W01]`~`[W10]` worker 번호가 표시되고 상단 상태에는 현재 활성 worker 수가 표시됩니다.
-- 중지/일시정지는 10개 worker 전체에 적용됩니다. 중지는 각 worker가 현재 browser operation을 빠져나오는 즉시 종료됩니다.
+- 브라우저 수는 UI에서 **1~10개**로 직접 정합니다. 기본값은 안정성을 위해 5개입니다.
+- 실행할 때 미확보 Class 목록을 worker 수만큼 **서로 겹치지 않는 연속 파트**로 균등 분할합니다. 예를 들어 835개를 5개 브라우저로 실행하면 각 worker가 167개씩 자기 파트만 처리합니다.
+- 공유 queue에서 다음 Class를 경쟁해서 가져가지 않습니다. W01/W02/...는 실행 시작 시 배정받은 파트를 끝까지 유지합니다.
+- 브라우저 session이 중간에 종료되면 해당 worker만 브라우저를 다시 띄우고 **방금 처리하던 같은 Class부터 재시도**합니다. Class 하나당 자동 browser restart는 최대 2회입니다.
+- browser restart 자체가 계속 실패하면 그 worker의 나머지 파트는 잘못 실패 처리하지 않고 pending으로 남깁니다. 다음 실행에서 다시 분할되어 처리됩니다.
+- 검색과 browser session은 worker별로 독립적이지만 `data/syllabus_links.json`, 실패 상태, state 저장은 기존과 같이 lock으로 직렬화합니다.
+- Output Log에는 `[W01 P12/167]`처럼 worker와 자기 파트 내 진행 위치를 표시합니다.
+- 중지/일시정지는 실행 중인 모든 worker에 적용됩니다.
