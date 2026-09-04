@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 from openpyxl import load_workbook
 
-from syllabus_mapping import load_verified_mapping
+from syllabus_mapping import load_verified_mapping, parse_direct_syllabus_url
 
 ROOT = Path(__file__).resolve().parent
 WEB_DIR = ROOT / "web"
@@ -130,11 +130,11 @@ def apply_syllabus_links(
         section.pop("syllabusUrl", None)
         if academic_year is None:
             continue
-        # The mapping reader already verified that this key belongs to this URL,
-        # including grouped entries where several Class codes share one syllabus
-        # record, so only the URL shape is re-checked here.
         override = overrides.get(f"{academic_year}:{class_code}", "")
-        if is_direct_syllabus_url(override):
+        parsed = parse_direct_syllabus_url(override)
+        # The mapping reader already validated the key. For verified grouped
+        # aliases, only the URL year must equal the active academic year.
+        if parsed and parsed[0] == int(academic_year):
             section["syllabusUrl"] = override
 
 
@@ -426,6 +426,7 @@ def parse_subject_list(path: Path) -> dict[str, dict[str, Any]]:
                     "reregister": clean_text(val("reregister")),
                     "pfEvaluation": clean_text(val("pf")),
                 }
+
     finally:
         wb.close()
 

@@ -1,46 +1,37 @@
-# APU Schedule Builder V1.6
+# APU Schedule Builder V1.5
 
-Ritsumeikan APU AY2026 Fall 2023 Curriculum용 로컬 시간표 생성기입니다.
+Ritsumeikan APU AY2026 Fall 2023 Curriculum용 시간표 생성기입니다.
 
-## 쓰는 방법
+## 사용 (설치 불필요)
 
-V1.6부터 이 앱은 **브라우저에서만 도는 정적 웹앱**입니다. 로컬 서버도, Python도, 설치도 필요 없습니다.
+브라우저에서 아래 주소를 열면 됩니다. macOS · Windows · 휴대폰 모두 동일하게 동작하며 설치할 것이 없습니다.
 
-배포된 주소를 열면 끝입니다. macOS · Windows · 아이패드 · 휴대폰 모두 동일하게 동작하고, 선택한 Class와 설정은 브라우저에 저장됩니다.
-
-```text
+```
 https://kaetaeru.github.io/Common/apu-schedule-builder/
 ```
 
-## 데이터 갱신 (관리자만)
+선택한 Class와 설정은 그 브라우저의 localStorage에 남습니다. 새로고침이나 재부팅으로는 사라지지 않고, 브라우저 데이터를 지우거나 시크릿 창을 닫을 때만 초기화됩니다. Safari는 7일간 방문이 없으면 자동으로 지우므로, 오래 보관하려면 Chrome을 쓰는 편이 안전합니다.
 
-APU가 timetable이나 subject list를 갱신했을 때만, 이 레포를 가진 사람이 한 번 실행합니다.
+## 데이터 갱신 (관리자용)
 
-- Windows: `build_windows.bat` 더블클릭
-- macOS / Linux: `chmod +x build_unix.sh && ./build_unix.sh`
+APU가 timetable을 갱신했을 때만 실행합니다. Python이 필요한 부분은 이 단계뿐입니다.
 
-직접 실행하려면:
-
-```bash
-python3 -m pip install -r requirements.txt
-python3 build_site.py            # 공식 XLSX 다운로드 → 파싱 → ../docs/apu-schedule-builder/ 생성
-python3 build_site.py --serve    # 만든 결과를 바로 미리보기
-python3 build_site.py --offline  # data/source/*.xlsx 를 그대로 사용 (다운로드 실패 시)
+```powershell
+py -3 build_site.py            # Windows  (build_windows.bat 더블클릭도 동일)
+python3 build_site.py          # macOS / Linux  (./build_unix.sh)
 ```
 
-빌드 결과(`Common/docs/`)를 커밋하면 GitHub Pages가 그대로 서비스합니다. 최초 1회만 GitHub의 **Settings → Pages → Deploy from branch → main / docs** 를 켜면 됩니다.
+공식 XLSX를 내려받아 파싱하고, 검증된 syllabus 링크·언어 사다리 메타데이터·A+ 평점을 합쳐 `../docs/apu-schedule-builder/`에 정적 사이트를 씁니다. 결과를 커밋해서 push하면 GitHub Pages가 배포합니다.
 
-### 구조
+유용한 옵션:
 
-| 위치 | 역할 |
-| --- | --- |
-| `build_site.py` | XLSX 다운로드·파싱·실라버스 링크 결합 → 정적 사이트 생성 (Python 필요) |
-| `app_backend.py` / `app.py` | 파서·Solver 기준 구현. 테스트가 검증하는 원본 |
-| `web/solver.js` | 브라우저에서 도는 Solver. `app_backend.py`의 beam search를 그대로 이식 |
-| `web/*.js`, `web/index.html` | 정적 앱 본체 |
-| `docs/apu-schedule-builder/` | 빌드 산출물. GitHub Pages가 서비스하는 실제 파일 |
+- `--colleges APM ST` 특정 College만 빌드
+- `--offline` 다운로드 없이 `data/source/*.xlsx` 재사용
+- `--serve` 빌드 후 `http://127.0.0.1:8000/`으로 미리보기
 
-`web/solver.js`는 손으로 옮긴 코드이므로 Python 원본과 갈라지면 안 됩니다. `tests/test_solver_parity.py`가 실제 APU 데이터로 두 구현의 결과를 통째로 비교합니다.
+### A+ 평점을 빌드 시점에 굽는 이유
+
+`api.apluscoursereview.com`은 CORS 헤더를 보내지 않아 브라우저에서 직접 호출할 수 없습니다. 그래서 Python 빌드 단계에서 받아 데이터에 합쳐 넣습니다. 사용자 입장에서는 추가 요청이 없어 더 빠르고, 대신 평점은 **마지막 빌드 시점의 스냅샷**입니다. A+ API가 응답하지 않아도 빌드는 성공하고 평점만 빠집니다.
 
 ## V1.5 Standalone Syllabus Collector 연동
 
@@ -54,7 +45,7 @@ Common/apu-syllabus-collector/data/syllabus_links.json
 
 기존 `apu-schedule-builder/data/syllabus_links.json`과 `data/syllabus-links/**/*.json`도 수동 override/기존 데이터 호환을 위해 계속 읽습니다. 같은 Class에 서로 다른 direct URL이 들어오면 conflict로 보고 해당 mapping을 사용하지 않습니다.
 
-Schedule Builder에는 Selenium 수집 코드가 남아 있지 않습니다. 빌드에 필요한 의존성은 `openpyxl` 하나뿐입니다. 자동 수집의 진행률, 현재 Class, 성공/실패, 재시도, Output Log는 standalone Collector UI에서 확인합니다.
+Schedule Builder에서 Selenium 자동 수집 버튼과 내장 Collector는 제거했습니다. 자동 수집의 진행률, 현재 Class, 성공/실패, 재시도, Output Log는 standalone Collector UI에서 확인합니다.
 
 ## V1.3 Windows HTTPS 인증서 처리
 
@@ -70,7 +61,7 @@ Windows fallback까지 실패하면 Windows 날짜/시간, VPN·프록시·보�
 
 ## V1.2 UX 흐름
 
-V1.2부터 다크모드/강한 경계 UI와 Class 중심 시간표를 유지합니다.
+V1.2부터 다크모드/강한 경계 UI와 Class 중심 시간표를 유지하면서, 실라버스 동기화를 Subject 묶음 검색보다 Class code 개별 검색 우선으로 바꿔 Salesforce가 첫 검색어를 반복하는 문제를 방지합니다.
 
 1. 왼쪽 `수업 찾기`에서 과목을 검색합니다.
 2. 같은 과목 아래 실제 `Class code`별 시간표를 각각 확인합니다.
@@ -79,7 +70,7 @@ V1.2부터 다크모드/강한 경계 UI와 Class 중심 시간표를 유지합�
 5. 선택한 Class가 충돌하면 추가하는 순간 바로 이유를 보여주고 막습니다.
 6. University-registered 수업은 설정에서 Class code로 추가하며 잠금 상태로 유지됩니다.
 7. 필요할 때만 `빈 학점 자동 채우기`로 현재 Class들을 고정한 채 대안을 계산합니다.
-8. 선택한 Class와 설정은 브라우저 localStorage에 저장되어 다음 방문 때 그대로 복원됩니다.
+8. 선택한 Class와 설정은 브라우저 localStorage에 유지되어 다음 방문에도 그대로 남습니다.
 
 ### 기본 데이터 모델
 
@@ -96,7 +87,6 @@ V1.2부터 다크모드/강한 경계 UI와 Class 중심 시간표를 유지합�
 - 확인된 Psychology Class `10121`은 `https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZQ8000004S4L9MAK/202610121?language=en_US`로 직접 연결됩니다.
 - 시간표 XLSX의 셀에 APU 상세 실라버스 하이퍼링크가 포함되어 있으면 파서가 해당 URL을 자동 추출합니다.
 - 추가로 확인된 direct URL은 `data/syllabus_links.json` 또는 `data/syllabus-links/<term>/batch-XXX.json`에 `"연도:ClassCode" -> URL` 형식으로 저장할 수 있습니다.
-- Collector가 여러 Class code를 하나의 syllabus record로 묶어 내보낸 경우, canonical 항목이 같은 파일에 함께 있으면 그 그룹 전체에 direct link를 붙입니다.
 - APU 상세 URL의 Salesforce record ID는 Class code에서 계산할 수 없으므로, 확인되지 않은 Class는 `실라버스 검색 ↗`으로 안전하게 fallback합니다.
 
 ### 가독성 / 다크모드
@@ -151,12 +141,12 @@ APU는 timetable/syllabus를 갱신할 수 있으므로 실제 수강신청 직�
 
 ## 테스트
 
-```bash
-python3 -m unittest discover -s tests -v
+```powershell
+py -3 -m unittest discover -s tests -v
 ```
 
-Solver 이식 검증은 Node와 빌드된 데이터가 있을 때만 돕니다. 기본은 빠른 표본이고, 전체 대조는 다음과 같이 돌립니다.
+`web/solver.js`는 `app_backend.py`의 beam search를 그대로 옮긴 것이고, 브라우저는 이 JS를 실행합니다. 두 구현이 어긋나면 안 되므로 `tests/test_solver_parity.py`가 같은 config 행렬을 양쪽에 돌려 점수·학점·Class code·metrics·설명까지 비교합니다. 기본은 빠른 표본 검사이고, 전체 스윕은 다음과 같이 돌립니다.
 
-```bash
-APU_PARITY_FULL=1 python3 -m unittest tests.test_solver_parity -v
+```powershell
+$env:APU_PARITY_FULL=1; py -3 -m unittest tests.test_solver_parity -v
 ```

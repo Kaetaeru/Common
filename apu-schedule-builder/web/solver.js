@@ -196,6 +196,41 @@ function apuStateScore(state, config, variant) {
   return score;
 }
 
+const APU_LANG_JA = "JA";
+const APU_LANG_EN = "EN";
+
+/** Port of language_rules.language_eligibility_reason. */
+function apuLanguageEligibilityReason(subject, config) {
+  const core = String(subject.languageCore ?? "").toUpperCase();
+  const rank = parseInt(subject.languageLevelRank ?? 0, 10) || 0;
+  if (!core || !rank) return "";
+
+  const track = String(config.track || "E").toUpperCase();
+  let completed = Math.max(0, parseInt(config.languageLevel ?? 0, 10) || 0);
+
+  if (track === "E" && core === APU_LANG_EN) return "English Basis · core English level course";
+  if ((track === "JST" || track === "JAT") && core === APU_LANG_JA) {
+    return "Japanese Basis · core Japanese level course";
+  }
+  if (track === "JAT" && core === APU_LANG_EN) completed = Math.max(completed, 4);
+
+  const opposite =
+    (track === "E" && core === APU_LANG_JA) ||
+    ((track === "JST" || track === "JAT") && core === APU_LANG_EN);
+  if (opposite && completed && rank <= completed) {
+    const label = String(subject.languageLevelLabel || subject.name || "language course");
+    return `${label} · at or below completed language level`;
+  }
+  return "";
+}
+
+/** Port of language_rules.filter_candidate_subjects: solver candidates only. */
+function apuFilterCandidateSubjects(data, config) {
+  return Object.assign({}, data, {
+    subjects: (data.subjects || []).filter((s) => !apuLanguageEligibilityReason(s, config)),
+  });
+}
+
 function apuEligibleSections(subject, semesterLevel) {
   const minimum = subject.availableFromSemester;
   if (minimum && semesterLevel < parseInt(minimum, 10)) return [];
@@ -230,6 +265,8 @@ function apuSignature(state) {
 }
 
 function apuSolveVariant(data, config, variant, beamSize = 220) {
+  // The language profile drops core level courses the student cannot register for.
+  data = apuFilterCandidateSubjects(data, config);
   const semesterLevel = parseInt(config.semesterLevel ?? 5, 10);
   const accelerated = Boolean(config.accelerated);
   const hardMax = apuMaxCreditsForSemester(semesterLevel, accelerated);
@@ -456,5 +493,13 @@ function apuGenerateSchedules(data, config) {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { apuGenerateSchedules, apuSolveVariant, apuScheduleMetrics, apuStateScore, apuSectionSlots };
+  module.exports = {
+    apuGenerateSchedules,
+    apuSolveVariant,
+    apuScheduleMetrics,
+    apuStateScore,
+    apuSectionSlots,
+    apuLanguageEligibilityReason,
+    apuFilterCandidateSubjects,
+  };
 }

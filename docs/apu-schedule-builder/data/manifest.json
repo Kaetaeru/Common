@@ -1,22 +1,26 @@
 {
-  "builtAt": "2026-09-04 12:04 UTC",
+  "builtAt": "2026-09-04 19:17 UTC",
   "sourceVersion": "AY2026 Fall / timetable updated 2026-09-01 / subject list updated 2026-03-13",
   "term": "AY2026 Fall",
+  "aplusAvailable": true,
   "colleges": {
     "APS": {
       "subjects": 269,
       "sections": 810,
-      "syllabusLinks": 681
+      "syllabusLinks": 682,
+      "aplusRatedSections": 232
     },
     "APM": {
       "subjects": 278,
       "sections": 836,
-      "syllabusLinks": 810
+      "syllabusLinks": 836,
+      "aplusRatedSections": 250
     },
     "ST": {
       "subjects": 268,
       "sections": 768,
-      "syllabusLinks": 675
+      "syllabusLinks": 676,
+      "aplusRatedSections": 221
     }
   }
 }

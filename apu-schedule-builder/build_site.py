@@ -9,8 +9,13 @@ the data runs it:
     python3 build_site.py         # macOS / Linux
 
 It downloads the official APU spreadsheets, parses them with the same code the
-tests cover, folds in the verified syllabus links, and writes a self-contained
-site to ../docs/apu-schedule-builder/ for GitHub Pages.
+tests cover, folds in the verified syllabus links, the language-ladder metadata
+and the A+ course ratings, then writes a self-contained site to
+../docs/apu-schedule-builder/ for GitHub Pages.
+
+A+ ratings are baked in here because api.apluscoursereview.com sends no CORS
+headers, so the published page cannot fetch them itself. They are a snapshot as
+of the build; re-run this script to refresh them.
 
 Useful flags:
 
@@ -35,7 +40,19 @@ import app_backend as backend
 ROOT = Path(__file__).resolve().parent
 DEFAULT_OUTPUT = ROOT.parent / "docs" / "apu-schedule-builder"
 COLLEGES = ("APS", "APM", "ST")
-WEB_ASSETS = ("index.html", "style.css", "solver.js", "app-core.js", "app-ui.js", "app-events.js")
+WEB_ASSETS = (
+    "index.html",
+    "style.css",
+    "aplus.css",
+    "filters.css",
+    "solver.js",
+    "app-i18n.js",
+    "app-core.js",
+    "app-ui.js",
+    "app-profile.js",
+    "app-filters.js",
+    "app-events.js",
+)
 
 
 def build_college(college: str, offline: bool) -> dict:
@@ -44,7 +61,12 @@ def build_college(college: str, offline: bool) -> dict:
     data = app.load_or_build_data(college, allow_download=not offline)
     linked = sum(1 for s in data.get("sections", []) if s.get("syllabusUrl"))
     total = len(data.get("sections", []))
-    print(f"{data['stats']['subjects']} subjects, {total} classes, {linked} syllabus links")
+    aplus = data.get("aplusReviewStatus") or {}
+    if aplus.get("available"):
+        rated = f"{aplus.get('matchedSections', 0)} A+ rated"
+    else:
+        rated = "A+ unavailable"
+    print(f"{data['stats']['subjects']} subjects, {total} classes, {linked} syllabus links, {rated}")
     return data
 
 
@@ -78,11 +100,13 @@ def write_site(output: Path, datasets: dict[str, dict]) -> None:
         "builtAt": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "sourceVersion": any_data.get("sourceVersion", backend.DATA_VERSION),
         "term": any_data.get("term"),
+        "aplusAvailable": bool((any_data.get("aplusReviewStatus") or {}).get("available")),
         "colleges": {
             college: {
                 "subjects": data["stats"]["subjects"],
                 "sections": data["stats"]["sections"],
                 "syllabusLinks": sum(1 for s in data.get("sections", []) if s.get("syllabusUrl")),
+                "aplusRatedSections": (data.get("aplusReviewStatus") or {}).get("matchedSections", 0),
             }
             for college, data in datasets.items()
         },

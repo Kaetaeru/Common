@@ -7,12 +7,15 @@ import subprocess
 from pathlib import Path
 
 import app_backend as _backend
+from aplus_reviews import enrich_schedule_data
+from language_rules import annotate_schedule_data, filter_candidate_subjects
 from syllabus_mapping import mapping_fingerprint
 from app_backend import *  # noqa: F401,F403 - preserve the public API used by tests and scripts
 
 
 _original_download_file = _backend.download_file
 _original_load_or_build_data = _backend.load_or_build_data
+_original_solve_variant = _backend.solve_variant
 
 
 def _running_on_windows() -> bool:
@@ -104,8 +107,8 @@ def _load_or_build_data_with_mapping_cache(college: str, allow_download: bool = 
         except (OSError, json.JSONDecodeError):
             cached_data = {}
         previous = cached_data.get("syllabusMappingFingerprint")
-        # A cache that already carries this fingerprint and schema needs no rewrite,
-        # so a plain read stays a read.
+        # A cache that already carries this fingerprint and schema needs no
+        # rewrite, so a plain read stays a read.
         needs_write = (
             previous != fingerprint
             or cached_data.get("schemaVersion") != _backend.NORMALIZED_SCHEMA_VERSION
@@ -124,8 +127,19 @@ def _load_or_build_data_with_mapping_cache(college: str, allow_download: bool = 
             cached.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     else:
         data["syllabusMappingCacheVerified"] = False
-    return data
+
+    # A+ is optional live enrichment. It is applied after the APU cache write so
+    # ratings never become stale data inside the normalized timetable cache.
+    return enrich_schedule_data(annotate_schedule_data(data))
 
 
 _backend.load_or_build_data = _load_or_build_data_with_mapping_cache
 load_or_build_data = _load_or_build_data_with_mapping_cache
+
+
+def _solve_variant_with_language_profile(data, config, variant, beam_size=220):
+    return _original_solve_variant(filter_candidate_subjects(data, config), config, variant, beam_size)
+
+
+_backend.solve_variant = _solve_variant_with_language_profile
+solve_variant = _solve_variant_with_language_profile

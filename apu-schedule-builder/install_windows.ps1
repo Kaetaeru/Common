@@ -93,5 +93,5 @@ Write-Host 'Verifying installation...'
 if ($LASTEXITCODE -ne 0) { throw 'Dependency verification failed.' }
 
 Write-Host ''
-Write-Host 'READY. Double-click build_windows.bat to build and preview the site.' -ForegroundColor Green
+Write-Host 'READY. Double-click run_windows.bat to start APU Schedule Builder.' -ForegroundColor Green
 Read-Host 'Press Enter to close'
