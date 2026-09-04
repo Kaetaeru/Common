@@ -1,2 +1,67 @@
-.quick-filters{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}.quick-filters button{border:1px solid var(--line);background:var(--surface-2);color:var(--muted);border-radius:999px;padding:5px 8px;font-size:9px;font-weight:850;line-height:1.15}.quick-filters button:hover{border-color:var(--line-strong);color:var(--ink-2)}.quick-filters button.active{background:var(--blue-soft);border-color:color-mix(in srgb,var(--blue) 55%,var(--line));color:var(--blue-strong)}.quick-filters .filter-more{margin-left:auto;border-radius:8px;display:flex;align-items:center;gap:5px}.filter-count{display:grid;place-items:center;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--blue);color:#fff;font-size:8px;font-weight:950}
-.advanced-filters{margin-top:9px;border:1px solid var(--line-strong);border-radius:11px;background:var(--surface-2);padding:10px;box-shadow:0 7px 20px rgba(0,0,0,.12)}.advanced-filter-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.advanced-filter-head strong{font-size:10px;color:var(--ink);letter-spacing:.02em}.advanced-filter-head button{border:0;background:transparent;color:var(--blue-strong);font-size:9px;font-weight:900;padding:2px 0}.advanced-filter-head.compact{margin-top:11px;margin-bottom:7px;padding-top:9px;border-top:1px solid var(--line)}.advanced-filter-block{margin-bottom:9px}.advanced-filter-label{font-size:8px;font-weight:850;color:var(--muted);margin-bottom:5px}.filter-chip-grid{display:flex;gap:4px;flex-wrap:wrap}.filter-chip{min-width:36px;border:1px solid var(--line);border-radius:7px;background:var(--surface-3);color:var(--faint);font-size:9px;font-weight:850;padding:5px 7px}.filter-chip.active{border-color:color-mix(in srgb,var(--blue) 55%,var(--line));background:var(--blue-soft);color:var(--blue-strong)}.filter-chip-grid.periods .filter-chip{flex:1;min-width:36px}.advanced-filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.advanced-filter-grid .advanced-native-filters{display:contents;margin:0}.advanced-filter-grid .advanced-native-filters select{width:100%;margin:0}.advanced-filter-field{display:flex;flex-direction:column;gap:4px;min-width:0}.advanced-filter-field>span{font-size:8px;color:var(--muted);font-weight:800}.advanced-filter-field select,.advanced-filter-grid select{width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:var(--surface);color:var(--ink-2);font-size:9px}.advanced-filter-checks{display:grid;gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}.advanced-filter-checks label{display:flex;align-items:center;gap:7px;font-size:9px;color:var(--ink-2);font-weight:750}.advanced-filter-checks input{accent-color:var(--blue)}.advanced-eligibility{margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+/* Course search filters: a row of quick pills, plus a collapsible panel of
+ * precise controls. Inactive filters stay quiet so the active ones read as
+ * the only thing currently narrowing the list. */
+
+.quick-filters{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.quick-filters button{
+  background:var(--surface-2);color:var(--muted);border-radius:999px;
+  padding:4px 9px;font-size:var(--fs-micro);font-weight:500;line-height:1.35;white-space:nowrap
+}
+.quick-filters button:hover{background:var(--surface-hover);color:var(--ink-2)}
+.quick-filters button.active{background:var(--accent-soft);color:var(--accent-strong);font-weight:600}
+.quick-filters .filter-more{
+  border-radius:var(--radius-sm);display:flex;align-items:center;gap:6px;
+  background:var(--surface-3);color:var(--ink-2)
+}
+.filter-count{
+  display:grid;place-items:center;min-width:17px;height:17px;padding:0 5px;
+  border-radius:999px;background:var(--accent);color:var(--on-accent);
+  font-size:var(--fs-micro);font-weight:600;font-variant-numeric:tabular-nums
+}
+
+/* ── advanced panel ───────────────────────────────────────────────────── */
+
+.advanced-filters{
+  margin-top:8px;border:1px solid var(--line);border-radius:var(--radius);
+  background:var(--surface-2);padding:12px
+}
+.advanced-filter-head{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px
+}
+.advanced-filter-head strong{font-size:var(--fs-body);font-weight:600;color:var(--ink)}
+.advanced-filter-head button{
+  background:transparent;color:var(--accent-strong);font-size:var(--fs-meta);font-weight:500;padding:2px 0
+}
+.advanced-filter-head button:hover{color:var(--accent)}
+.advanced-filter-head.compact{
+  margin-top:14px;margin-bottom:9px;padding-top:12px;border-top:1px solid var(--line)
+}
+.advanced-filter-block{margin-bottom:12px}
+.advanced-filter-label{font-size:var(--fs-micro);font-weight:500;color:var(--muted);margin-bottom:6px}
+
+.filter-chip-grid{display:flex;gap:4px;flex-wrap:wrap}
+.filter-chip{
+  min-width:38px;border-radius:var(--radius-sm);background:var(--surface-3);
+  color:var(--muted);font-size:var(--fs-meta);font-weight:500;padding:6px 9px
+}
+.filter-chip:hover{background:var(--surface-hover);color:var(--ink-2)}
+.filter-chip.active{background:var(--accent);color:var(--on-accent);font-weight:600}
+.filter-chip-grid.periods .filter-chip{flex:1;min-width:38px}
+
+.advanced-filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.advanced-filter-grid .advanced-native-filters{display:contents;margin:0}
+.advanced-filter-grid .advanced-native-filters select{width:100%;margin:0}
+.advanced-filter-field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.advanced-filter-field>span{font-size:var(--fs-micro);color:var(--muted);font-weight:500}
+.advanced-filter-field select,.advanced-filter-grid select{
+  width:100%;min-width:0;border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:7px 9px;background:var(--surface);color:var(--ink-2);font-size:var(--fs-meta)
+}
+.advanced-filter-checks{
+  display:grid;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)
+}
+.advanced-filter-checks label{
+  display:flex;align-items:center;gap:8px;font-size:var(--fs-meta);color:var(--ink-2)
+}
+.advanced-filter-checks input{accent-color:var(--accent)}
+.advanced-eligibility{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
