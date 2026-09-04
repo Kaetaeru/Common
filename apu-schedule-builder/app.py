@@ -25,7 +25,9 @@ _STATIC_FILES = {
     "/app-ui.js": ("app-ui.js", "application/javascript; charset=utf-8"),
     "/app-events.js": ("app-events.js", "application/javascript; charset=utf-8"),
     "/app-profile.js": ("app-profile.js", "application/javascript; charset=utf-8"),
+    "/app-filters.js": ("app-filters.js", "application/javascript; charset=utf-8"),
     "/aplus.css": ("aplus.css", "text/css; charset=utf-8"),
+    "/filters.css": ("filters.css", "text/css; charset=utf-8"),
 }
 
 
