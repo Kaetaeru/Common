@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Common</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0b0f17;
+    --card: #131a26;
+    --line: #26324a;
+    --text: #e8edf7;
+    --muted: #93a2bd;
+    --accent: #6f9bff;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f5f7fb; --card: #ffffff; --line: #dbe2f0; --text: #101725; --muted: #5b6982; --accent: #2a5fd6; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 20px;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+  }
+  main { width: 100%; max-width: 560px; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.01em; }
+  .sub { margin: 0 0 28px; color: var(--muted); }
+  a.card {
+    display: block;
+    padding: 20px 22px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--card);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  a.card:hover, a.card:focus-visible { border-color: var(--accent); transform: translateY(-1px); }
+  a.card strong { display: block; font-size: 18px; margin-bottom: 4px; }
+  a.card span { color: var(--muted); font-size: 14px; }
+  .go { margin-top: 12px; color: var(--accent); font-weight: 600; font-size: 14px; }
+  footer { margin-top: 26px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Common</h1>
+  <p class="sub">Ritsumeikan APU 관련 도구 모음</p>
+
+  <a class="card" href="apu-schedule-builder/">
+    <strong>APU Schedule Builder</strong>
+    <span>AY2026 Fall 시간표를 직접 짜고, 남은 학점을 자동으로 채웁니다. 설치 없이 브라우저에서 바로 동작합니다.</span>
+    <div class="go">열기 →</div>
+  </a>
+
+  <footer>APU는 timetable과 syllabus를 갱신할 수 있습니다. 수강신청 직전에 공식 페이지와 CAMPUS WEB을 다시 확인하세요.</footer>
+</main>
+</body>
+</html>
