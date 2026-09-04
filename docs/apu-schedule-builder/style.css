@@ -6,88 +6,100 @@
  * active plan, green for locked classes, amber for previews, red for problems.
  */
 
+/* Two themes, one voice. Dusk (dark) is warm charcoal with an apricot accent;
+ * Paper (light) is a warm off-white catalogue with deep green. Both share the
+ * type scale and the serif headings, so switching does not feel like a
+ * different product — only the light changes. */
+
 :root{
-  /* Latin first, then the Japanese faces course titles actually need. */
   font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans JP","Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;
   font-size:16px;
   line-height:1.5;
   color-scheme:dark;
   -webkit-font-smoothing:antialiased;
 
+  /* Titles that name a thing; data stays sans. */
+  --font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Noto Serif JP","Yu Mincho",serif;
+
   /* Type scale */
-  --fs-micro:11px;   /* tags, unit labels */
-  --fs-meta:12px;    /* secondary text */
-  --fs-body:13px;    /* default */
-  --fs-title:14px;   /* card titles */
-  --fs-head:16px;    /* section headings */
-  --fs-brand:19px;
+  --fs-micro:11px;
+  --fs-meta:12px;
+  --fs-body:13px;
+  --fs-title:14px;
+  --fs-head:16px;
+  --fs-brand:20px;
 
-  /* Neutral surfaces, low blue cast so course colour reads clearly */
-  --bg:#0e1116;
-  --surface:#151a21;
-  --surface-2:#1b2129;
-  --surface-3:#222932;
-  --surface-hover:#262e38;
-  --ink:#e9edf3;
-  --ink-2:#b9c3d0;
-  --muted:#8b96a5;
-  --faint:#68727f;
-  --line:#252c37;
-  --line-strong:#333c49;
-  --line-focus:#5b8cff;
-  --grid:#232a34;
-  --grid-strong:#2f3742;
-  --grid-header:#1a2028;
+  /* Dusk */
+  --bg:#17161a;
+  --surface:#1e1d22;
+  --surface-2:#25242a;
+  --surface-3:#2e2c34;
+  --surface-hover:#35333c;
+  --ink:#f2efe9;
+  --ink-2:#c4bfb6;
+  --muted:#948e86;
+  --faint:#6d675f;
+  --line:#2e2c34;
+  --line-strong:#403d47;
+  --line-focus:#e8975a;
+  --grid:#2a2930;
+  --grid-strong:#3a3841;
+  --grid-header:#221f26;
 
-  --accent:#5b8cff;
-  --accent-strong:#89aaff;
-  --accent-soft:#182444;
-  --accent-soft-2:#1f2f57;
-  --on-accent:#0b1020;
+  --accent:#e8975a;
+  --accent-strong:#f3ac74;
+  --accent-soft:#3a2a1e;
+  --accent-soft-2:#4a3626;
+  --on-accent:#1a1207;
 
-  --green:#3fb984;--green-soft:#11312a;
-  --red:#f2726a;--red-soft:#33191c;
-  --amber:#e0a33e;--amber-soft:#332714;
-  --purple:#a78bfa;--purple-soft:#241f3d;
+  --green:#7fbf7a;--green-soft:#22301f;
+  --red:#e8796f;--red-soft:#361f1d;
+  --amber:#dcc06a;--amber-soft:#332c19;
+  --purple:#b09ae0;--purple-soft:#2a2438;
 
-  --radius-sm:6px;
-  --radius:10px;
-  --radius-lg:14px;
-  --shadow:0 10px 30px rgba(0,0,0,.35);
-  --shadow-sm:0 2px 8px rgba(0,0,0,.2);
+  --radius-sm:8px;
+  --radius:12px;
+  --radius-lg:16px;
+  --shadow:0 16px 40px rgba(0,0,0,.5);
+  --shadow-sm:0 2px 10px rgba(0,0,0,.3);
 }
 
 html[data-theme="light"]{
   color-scheme:light;
-  --bg:#f5f7f9;
-  --surface:#ffffff;
-  --surface-2:#f8fafb;
-  --surface-3:#eff2f6;
-  --surface-hover:#e9eef4;
-  --ink:#141a22;
-  --ink-2:#404a58;
-  --muted:#6b7482;
-  --faint:#98a1ad;
-  --line:#e4e8ed;
-  --line-strong:#ccd3dc;
-  --line-focus:#2f62e0;
-  --grid:#e7ebf0;
-  --grid-strong:#d3dae2;
-  --grid-header:#f4f6f9;
 
-  --accent:#2f62e0;
-  --accent-strong:#2450c4;
-  --accent-soft:#eef3ff;
-  --accent-soft-2:#e0e9ff;
-  --on-accent:#ffffff;
+  /* Paper */
+  --bg:#f6f4ef;
+  --surface:#fffefb;
+  --surface-2:#f2efe8;
+  --surface-3:#eae6dc;
+  --surface-hover:#e8e3d8;
+  --ink:#1c1a16;
+  --ink-2:#46423a;
+  --muted:#7c7669;
+  --faint:#a49d8e;
+  --line:#e3ded2;
+  --line-strong:#cdc6b5;
+  --line-focus:#17695a;
+  --grid:#e6e1d5;
+  --grid-strong:#cdc6b5;
+  --grid-header:#f2efe8;
 
-  --green:#0e7a56;--green-soft:#e9f7f1;
-  --red:#c0362b;--red-soft:#fdeeed;
-  --amber:#96601a;--amber-soft:#fdf3e3;
-  --purple:#6741c8;--purple-soft:#f2edfe;
+  --accent:#17695a;
+  --accent-strong:#0f5245;
+  --accent-soft:#e6efea;
+  --accent-soft-2:#d6e6df;
+  --on-accent:#fffefb;
 
-  --shadow:0 10px 30px rgba(16,24,40,.12);
-  --shadow-sm:0 1px 4px rgba(16,24,40,.08);
+  --green:#3f6b32;--green-soft:#e9f0e4;
+  --red:#9d3327;--red-soft:#f8e9e6;
+  --amber:#8a5a1a;--amber-soft:#f6eddc;
+  --purple:#5a4a86;--purple-soft:#eeeaf4;
+
+  --radius-sm:5px;
+  --radius:8px;
+  --radius-lg:10px;
+  --shadow:0 12px 34px rgba(60,50,30,.16);
+  --shadow-sm:0 1px 3px rgba(60,50,30,.07);
 }
 
 /* ── base ─────────────────────────────────────────────────────────────── */
@@ -112,8 +124,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 }
 .brand{display:flex;align-items:center;gap:11px}
 .logo{
-  width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
-  background:var(--accent-soft);color:var(--accent-strong);
+  width:34px;height:34px;border-radius:var(--radius-sm);display:grid;place-items:center;
+  background:var(--accent);color:var(--on-accent);
   font-size:var(--fs-micro);font-weight:600;letter-spacing:.04em
 }
 .brand h1{margin:0;font-size:var(--fs-brand);font-weight:600;letter-spacing:-.015em;line-height:1.2}
@@ -375,7 +387,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 .meeting-card:hover{background:var(--accent-soft-2)}
 .meeting-card.locked{background:var(--green-soft)}
 .meeting-card.locked::before{background:var(--green)}
-.meeting-card.preview{background:var(--amber-soft)}
+.meeting-card.preview{background:var(--amber-soft);outline:1px dashed var(--amber);outline-offset:-2px}
 .meeting-card.preview::before{background:var(--amber)}
 .meeting-card.active,.meeting-card.is-linked{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 55%,transparent)}
 .meeting-card strong{display:block;font-size:var(--fs-micro);line-height:1.35;font-weight:600;color:var(--ink)}
@@ -504,3 +516,36 @@ button:focus-visible,input:focus-visible,select:focus-visible{
   .metric:nth-child(n+4){display:none}
   .suggestions{left:380px}
 }
+
+/* ── themes ───────────────────────────────────────────────────────────── */
+
+.brand h1,.plan-title h2,.subject-title,.detail-title,.drawer-head strong{
+  font-family:var(--font-display);font-weight:600;letter-spacing:0
+}
+.detail-title{font-size:19px}
+
+/* Paper leans on hairlines and outlines: it should read like print. */
+html[data-theme="light"] .topbar{border-bottom-color:var(--line-strong)}
+html[data-theme="light"] .subject-group{border-color:var(--line-strong)}
+html[data-theme="light"] .class-card{background:var(--surface)}
+html[data-theme="light"] .class-meetings{background:var(--surface-2)}
+html[data-theme="light"] .calendar-card{border-color:var(--line-strong)}
+html[data-theme="light"] .calendar th{background:var(--surface-2)}
+html[data-theme="light"] .tag{background:transparent;border:1px solid var(--line-strong)}
+html[data-theme="light"] .tag.q{border-color:color-mix(in srgb,var(--purple) 40%,var(--line-strong))}
+html[data-theme="light"] .tag.lang{border-color:color-mix(in srgb,var(--accent) 40%,var(--line-strong))}
+html[data-theme="light"] .tag.warn{border-color:color-mix(in srgb,var(--amber) 45%,var(--line-strong))}
+html[data-theme="light"] .quick-filters button{background:transparent;border:1px solid var(--line-strong)}
+html[data-theme="light"] .quick-filters button.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+html[data-theme="light"] .quick-filters .filter-more{background:var(--surface-3)}
+
+/* Dusk drops most borders and softens the corners instead. */
+html:not([data-theme="light"]) .class-card{border-color:transparent;background:var(--surface-3)}
+html:not([data-theme="light"]) .class-card:hover{background:var(--surface-hover)}
+html:not([data-theme="light"]) .class-meetings{background:rgba(0,0,0,.22)}
+html:not([data-theme="light"]) .toast{background:var(--surface-3);color:var(--ink)}
+
+/* Dusk's accent is warm, so review data drops its amber fill and keeps only
+ * the gold star — otherwise A+ badges read as another apricot control. */
+html:not([data-theme="light"]) .aplus-badge{background:var(--surface-2)}
+html:not([data-theme="light"]) .aplus-badge:hover{background:var(--surface-hover)}
