@@ -22,13 +22,13 @@ for /f "usebackq delims=" %%P in (`py -3 -c "import sys; print(sys.executable)" 
 if not defined PYEXE for /f "usebackq delims=" %%P in (`python -c "import sys; print(sys.executable)" 2^>nul`) do set "PYEXE=%%P"
 if not defined PYEXE (
   echo Python installation finished, but Python could not be found.
-  echo Close this window and run run_windows.bat again.
+  echo Close this window and run build_windows.bat again.
   pause
   exit /b 1
 )
 
 :python_found
-"%PYEXE%" -c "import openpyxl, selenium" >nul 2>nul
+"%PYEXE%" -c "import openpyxl" >nul 2>nul
 if errorlevel 1 (
   echo Installing required Python packages...
   "%PYEXE%" -m pip install -r requirements.txt
@@ -38,6 +38,6 @@ if errorlevel 1 (
   )
 )
 
-"%PYEXE%" app.py
+"%PYEXE%" build_site.py --serve
 if errorlevel 1 pause
 endlocal

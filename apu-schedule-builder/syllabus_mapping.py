@@ -45,6 +45,23 @@ def validate_mapping_entry(key: Any, url: Any) -> tuple[str | None, str | None]:
     return key_text, None
 
 
+def _collector_group_alias(key: Any, url: Any, raw: dict) -> str | None:
+    key_text = str(key or "").strip()
+    url_text = str(url or "").strip()
+    match = _KEY_RE.fullmatch(key_text)
+    parsed = parse_direct_syllabus_url(url_text)
+    if not match or not parsed or parsed[0] != int(match.group(1)):
+        return None
+    canonical_key = f"{parsed[0]}:{parsed[1]}"
+    if canonical_key == key_text:
+        return None
+    canonical_url = str(raw.get(canonical_key) or "").strip()
+    if canonical_url != url_text:
+        return None
+    normalized, error = validate_mapping_entry(canonical_key, canonical_url)
+    return key_text if normalized and not error else None
+
+
 def mapping_source_files(data_dir: Path) -> list[Path]:
     files: list[Path] = []
     legacy = data_dir / "syllabus_links.json"
@@ -65,6 +82,7 @@ def mapping_source_files(data_dir: Path) -> list[Path]:
 def scan_mapping_sources(data_dir: Path) -> dict[str, Any]:
     data_dir = Path(data_dir)
     files = mapping_source_files(data_dir)
+    collector_output = data_dir.parent.parent / "apu-syllabus-collector" / "data" / "syllabus_links.json"
     seen_urls: dict[str, set[str]] = {}
     key_sources: dict[str, list[str]] = {}
     problems: list[dict[str, str]] = []
@@ -93,6 +111,10 @@ def scan_mapping_sources(data_dir: Path) -> dict[str, Any]:
         source["entries"] = len(raw)
         for key, url in raw.items():
             normalized_key, error = validate_mapping_entry(key, url)
+            if error and path == collector_output:
+                normalized_key = _collector_group_alias(key, url, raw)
+                if normalized_key:
+                    error = None
             if error:
                 source["invalid"] += 1
                 problems.append({"source": relative, "key": str(key), "reason": error})

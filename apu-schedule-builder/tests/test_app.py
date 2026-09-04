@@ -248,145 +248,17 @@ class APUScheduleBuilderTests(unittest.TestCase):
         japanese = State(chosen=[{"language": "J"}])
         config = {"targetCredits": 0, "preferredLanguages": ["E"], "earliestPeriod": 1, "latestPeriod": 6, "maxCampusDays": 5, "maxGap": 5}
         self.assertGreater(state_score(english, config, "balanced"), state_score(japanese, config, "balanced"))
+    def test_parsed_workbooks_are_released_for_the_refresh_flow(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            t, s = self.make_files(Path(tmp))
+            build_normalized("APM", t, s)
+            # Refresh deletes both source files before downloading them again, which
+            # Windows refuses while openpyxl still holds the workbook open.
+            t.unlink()
+            s.unlink()
+            self.assertFalse(t.exists())
+            self.assertFalse(s.exists())
 
 
 if __name__ == "__main__":
     unittest.main()
-
-class SyllabusSyncParsingTests(unittest.TestCase):
-    def test_extract_direct_links_filters_year_and_class_code(self):
-        from syllabus_sync import extract_direct_links
-        html = '''
-        <a href="https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZQ8000004S4L9MAK/202610121?language=en_US">Psychology</a>
-        <a href="https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZQ8000004S4QvMAK/202611330?language=en_US">Other</a>
-        <a href="https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZQOLD0000000001/202510121?language=en_US">Old</a>
-        '''
-        found = extract_direct_links(html, {"10121"}, 2026)
-        self.assertEqual(found, {
-            "2026:10121": "https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZQ8000004S4L9MAK/202610121?language=en_US"
-        })
-
-    def test_extract_direct_links_handles_escaped_html(self):
-        from syllabus_sync import extract_direct_links
-        raw = 'https:\\/\\/syllabus.apu.ac.jp\\/syllabus\\/s\\/a-syllabus\\/a0ZQ8000004S4L9MAK\\/202610121?language=en_US&amp;x=1'
-        found = extract_direct_links(raw, {"10121"}, 2026)
-        self.assertIn("2026:10121", found)
-
-
-class SyllabusSyncShadowDomRegressionTests(unittest.TestCase):
-    class FakeElement:
-        tag_name = "input"
-        def __init__(self, attrs=None, displayed=True, enabled=True):
-            self.attrs = attrs or {}
-            self._displayed = displayed
-            self._enabled = enabled
-        def is_displayed(self): return self._displayed
-        def is_enabled(self): return self._enabled
-        def get_attribute(self, name): return self.attrs.get(name, "")
-
-    class FakeDriver:
-        page_source = "<html></html>"
-        def __init__(self, element, context):
-            self.element = element
-            self.context = context
-        def execute_script(self, script, *args):
-            if "const selector = arguments[0]" in script:
-                selector = args[0]
-                if selector.startswith("input"):
-                    return [self.element]
-                if selector.startswith("a[href"):
-                    return [self.element]
-                return []
-            if "const start = arguments[0]" in script:
-                return self.context
-            return None
-
-    def test_shadow_dom_input_is_considered_for_class_code_search(self):
-        from syllabus_sync import _find_input
-        el = self.FakeElement({"type": "text"})
-        driver = self.FakeDriver(el, "Class Code")
-        self.assertIs(_find_input(driver, "code"), el)
-
-    def test_shadow_dom_direct_link_is_collected(self):
-        from syllabus_sync import _page_links
-        url = "https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZQ8000004S4L9MAK/202610121?language=en_US"
-        el = self.FakeElement({"href": url})
-        el.tag_name = "a"
-        driver = self.FakeDriver(el, "Psychology")
-        found = _page_links(driver, {"10121"}, 2026)
-        self.assertEqual(found.get("2026:10121"), url)
-
-
-class SyllabusSyncQueryRegressionTests(unittest.TestCase):
-    class JsFallbackElement:
-        def __init__(self):
-            self.attrs = {"value": "A World History of Interaction"}
-        def click(self):
-            return None
-        def get_attribute(self, name):
-            return self.attrs.get(name, "")
-
-    class JsFallbackDriver:
-        def execute_script(self, script, *args):
-            if "Object.getOwnPropertyDescriptor" in script:
-                element, value = args
-                element.attrs["value"] = value
-                return None
-            return None
-
-    def test_replace_input_value_verifies_new_query_value(self):
-        from syllabus_sync import _replace_input_value
-        el = self.JsFallbackElement()
-        driver = self.JsFallbackDriver()
-        self.assertTrue(_replace_input_value(driver, el, "10009"))
-        self.assertEqual(el.get_attribute("value"), "10009")
-
-    def test_sync_searches_class_codes_before_subject_names(self):
-        from pathlib import Path
-        from tempfile import TemporaryDirectory
-        from unittest.mock import patch
-        from syllabus_sync import sync_links
-
-        class Driver:
-            page_source = "<html></html>"
-            current_url = "https://syllabus.apu.ac.jp/syllabus/s/"
-            title = "APU Syllabus"
-            def get(self, url):
-                self.current_url = url
-            def quit(self):
-                pass
-            def save_screenshot(self, path):
-                return True
-
-        calls = []
-        sections = [
-            {"name": "A World History of Interaction", "classCode": "10009"},
-            {"name": "Psychology", "classCode": "10121"},
-        ]
-
-        def submit(driver, value, mode):
-            calls.append((str(value), mode))
-            return True
-
-        def collect(driver, wanted, year):
-            return {
-                f"{year}:{code}": f"https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZQTEST{code}/{year}{code}?language=en_US"
-                for code in wanted
-            }
-
-        with TemporaryDirectory() as td, \
-             patch("syllabus_sync._make_driver", return_value=Driver()), \
-             patch("syllabus_sync._ensure_search"), \
-             patch("syllabus_sync._find_input", return_value=object()), \
-             patch("syllabus_sync._submit_search", side_effect=submit), \
-             patch("syllabus_sync._collect_pages", side_effect=collect):
-            result = sync_links(
-                sections=sections,
-                year=2026,
-                mapping_path=Path(td) / "syllabus_links.json",
-                headless=True,
-            )
-
-        self.assertTrue(result["complete"])
-        self.assertEqual(calls[:2], [("10009", "code"), ("10121", "code")])
-        self.assertNotIn(("A World History of Interaction", "subject"), calls)

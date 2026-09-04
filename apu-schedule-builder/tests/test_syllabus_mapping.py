@@ -8,7 +8,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import app
-from syllabus_mapping import load_verified_mapping, parse_direct_syllabus_url, scan_mapping_sources
+from syllabus_mapping import parse_direct_syllabus_url, scan_mapping_sources
 
 
 PSYCHOLOGY = "https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZQ8000004S4L9MAK/202610121?language=en_US"
@@ -62,7 +62,6 @@ class SyllabusMappingTests(unittest.TestCase):
             self.assertFalse(report["mapping"])
             self.assertEqual(len(report["problems"]), 1)
 
-
     def test_standalone_collector_output_is_a_mapping_source(self):
         with tempfile.TemporaryDirectory() as td:
             common = Path(td)
@@ -101,6 +100,24 @@ class SyllabusMappingTests(unittest.TestCase):
             self.assertTrue(result["syllabusMappingCacheVerified"])
             self.assertNotEqual(result["syllabusMappingFingerprint"], "old")
             self.assertTrue(cached.exists())
+
+    def test_grouped_collector_alias_attaches_to_every_class_in_the_group(self):
+        group = "https://syllabus.apu.ac.jp/syllabus/s/a-syllabus/a0ZQ8000005G8q3MAC/202612347"
+        with tempfile.TemporaryDirectory() as td:
+            common = Path(td)
+            data_dir = common / "apu-schedule-builder" / "data"
+            data_dir.mkdir(parents=True)
+            self.write_json(
+                common / "apu-syllabus-collector" / "data" / "syllabus_links.json",
+                {"2026:12347": group, "2026:12349": group},
+            )
+            sections = [{"classCode": "12347"}, {"classCode": "12349"}, {"classCode": "99999"}]
+            with patch.object(app._backend, "DATA_DIR", data_dir):
+                app.apply_syllabus_links(sections, 2026)
+
+        self.assertEqual(sections[0]["syllabusUrl"], group)
+        self.assertEqual(sections[1]["syllabusUrl"], group)
+        self.assertNotIn("syllabusUrl", sections[2])
 
     def test_schedule_app_uses_the_same_repository_reader(self):
         with tempfile.TemporaryDirectory() as td:

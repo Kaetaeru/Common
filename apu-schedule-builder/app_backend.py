@@ -2,27 +2,22 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import re
-import socket
-import threading
 import urllib.request
-import webbrowser
 from dataclasses import dataclass, field
-from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Iterable
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
 from openpyxl import load_workbook
+
+from syllabus_mapping import load_verified_mapping
 
 ROOT = Path(__file__).resolve().parent
 WEB_DIR = ROOT / "web"
 DATA_DIR = ROOT / "data"
 SOURCE_DIR = DATA_DIR / "source"
 NORMALIZED_DIR = DATA_DIR / "normalized"
-SYLLABUS_LINKS_FILE = DATA_DIR / "syllabus_links.json"
 SOURCE_DIR.mkdir(parents=True, exist_ok=True)
 NORMALIZED_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -116,17 +111,17 @@ def syllabus_link_from_cells(cells: Iterable[Any], class_code: Any) -> str:
 
 
 def load_syllabus_link_overrides() -> dict[str, str]:
-    try:
-        raw = json.loads(SYLLABUS_LINKS_FILE.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    if not isinstance(raw, dict):
-        return {}
-    return {str(key): clean_text(value) for key, value in raw.items() if clean_text(value)}
+    """Verified "YYYY:ClassCode" -> direct URL mapping from every repository source."""
+    return load_verified_mapping(DATA_DIR)
 
 
-def apply_syllabus_links(sections: Iterable[dict[str, Any]], academic_year: int | None) -> None:
-    overrides = load_syllabus_link_overrides()
+def apply_syllabus_links(
+    sections: Iterable[dict[str, Any]],
+    academic_year: int | None,
+    overrides: dict[str, str] | None = None,
+) -> None:
+    if overrides is None:
+        overrides = load_syllabus_link_overrides()
     for section in sections:
         class_code = code_text(section.get("classCode"))
         direct = clean_text(section.get("syllabusUrl"))
@@ -135,9 +130,21 @@ def apply_syllabus_links(sections: Iterable[dict[str, Any]], academic_year: int 
         section.pop("syllabusUrl", None)
         if academic_year is None:
             continue
+        # The mapping reader already verified that this key belongs to this URL,
+        # including grouped entries where several Class codes share one syllabus
+        # record, so only the URL shape is re-checked here.
         override = overrides.get(f"{academic_year}:{class_code}", "")
-        if is_direct_syllabus_url(override, class_code, academic_year):
+        if is_direct_syllabus_url(override):
             section["syllabusUrl"] = override
+
+
+def attach_syllabus_links(data: dict[str, Any]) -> None:
+    """Refresh syllabus URLs across a normalized payload with a single mapping read."""
+    year = data.get("academicYear")
+    overrides = load_syllabus_link_overrides()
+    apply_syllabus_links(data.get("sections", []), year, overrides)
+    for subject in data.get("subjects", []):
+        apply_syllabus_links(subject.get("sections", []), year, overrides)
 
 
 def detect_academic_term(path: Path) -> dict[str, Any]:
@@ -288,89 +295,94 @@ def find_header(ws, aliases: dict[str, list[str]], required: set[str], scan_rows
 
 
 def parse_timetable(path: Path, college: str) -> dict[str, dict[str, Any]]:
+    # read_only=False so cell hyperlinks (direct syllabus URLs) stay reachable.
     wb = load_workbook(path, read_only=False, data_only=True)
     sections: dict[str, dict[str, Any]] = {}
 
-    for ws in wb.worksheets:
-        header_row, columns = find_header(ws, HEADER_ALIASES, {"class_code", "subject_cd", "name"})
-        if not header_row or not columns:
-            continue
-
-        carry: dict[str, Any] = {}
-        carry_fields = {"term", "class_code", "subject_cd", "name", "instructor", "language", "semester", "field", "area", "mode"}
-        for row in ws.iter_rows(min_row=header_row + 1, values_only=False):
-            if not any(clean_text(cell.value) for cell in row):
-                carry.clear()
+    try:
+        for ws in wb.worksheets:
+            header_row, columns = find_header(ws, HEADER_ALIASES, {"class_code", "subject_cd", "name"})
+            if not header_row or not columns:
                 continue
 
-            def raw_val(field: str):
-                idx = columns.get(field)
-                return row[idx].value if idx is not None and idx < len(row) else None
+            carry: dict[str, Any] = {}
+            carry_fields = {"term", "class_code", "subject_cd", "name", "instructor", "language", "semester", "field", "area", "mode"}
+            for row in ws.iter_rows(min_row=header_row + 1, values_only=False):
+                if not any(clean_text(cell.value) for cell in row):
+                    carry.clear()
+                    continue
 
-            def val(field: str):
-                current = raw_val(field)
-                if field in carry_fields:
-                    if clean_text(current):
-                        carry[field] = current
-                    else:
-                        current = carry.get(field)
-                return current
+                def raw_val(field: str):
+                    idx = columns.get(field)
+                    return row[idx].value if idx is not None and idx < len(row) else None
 
-            class_code = code_text(val("class_code"))
-            subject_cd = code_text(val("subject_cd"))
-            name = clean_text(val("name"))
-            if not class_code or not subject_cd or not name:
-                continue
+                def val(field: str):
+                    current = raw_val(field)
+                    if field in carry_fields:
+                        if clean_text(current):
+                            carry[field] = current
+                        else:
+                            current = carry.get(field)
+                    return current
 
-            subject_code = base_subject_code(subject_cd)
-            if not subject_code:
-                continue
+                class_code = code_text(val("class_code"))
+                subject_cd = code_text(val("subject_cd"))
+                name = clean_text(val("name"))
+                if not class_code or not subject_cd or not name:
+                    continue
 
-            section = sections.setdefault(class_code, {
-                "college": college,
-                "classCode": class_code,
-                "subjectCd": subject_cd,
-                "subjectCode": subject_code,
-                "name": name,
-                "instructor": clean_text(val("instructor")),
-                "language": clean_text(val("language")),
-                "term": normalize_term(val("term")),
-                "mode": normalize_mode(val("mode")),
-                "field": clean_text(val("field")),
-                "area": clean_text(val("area")),
-                "availableFromSemester": parse_semester_min(val("semester")),
-                "credits": parse_number(val("credits")),
-                "meetings": [],
-            })
-            syllabus_url = syllabus_link_from_cells(row, class_code)
-            if syllabus_url and not section.get("syllabusUrl"):
-                section["syllabusUrl"] = syllabus_url
+                subject_code = base_subject_code(subject_cd)
+                if not subject_code:
+                    continue
 
-            day = normalize_day(val("day"))
-            period = parse_period(val("period"))
-            if day and period:
-                meeting = {
-                    "day": day,
-                    "period": period,
-                    "classroom": clean_text(val("classroom")),
+                section = sections.setdefault(class_code, {
+                    "college": college,
+                    "classCode": class_code,
+                    "subjectCd": subject_cd,
+                    "subjectCode": subject_code,
+                    "name": name,
+                    "instructor": clean_text(val("instructor")),
+                    "language": clean_text(val("language")),
+                    "term": normalize_term(val("term")),
                     "mode": normalize_mode(val("mode")),
-                }
-                if meeting not in section["meetings"]:
-                    section["meetings"].append(meeting)
+                    "field": clean_text(val("field")),
+                    "area": clean_text(val("area")),
+                    "availableFromSemester": parse_semester_min(val("semester")),
+                    "credits": parse_number(val("credits")),
+                    "meetings": [],
+                })
+                syllabus_url = syllabus_link_from_cells(row, class_code)
+                if syllabus_url and not section.get("syllabusUrl"):
+                    section["syllabusUrl"] = syllabus_url
 
-            # Some sheets repeat metadata only on the first row; keep first non-empty value.
-            for key, current in [
-                ("instructor", clean_text(val("instructor"))),
-                ("language", clean_text(val("language"))),
-                ("field", clean_text(val("field"))),
-                ("area", clean_text(val("area"))),
-            ]:
-                if not section[key] and current:
-                    section[key] = current
-            if section["availableFromSemester"] is None:
-                section["availableFromSemester"] = parse_semester_min(val("semester"))
-            if section["credits"] is None:
-                section["credits"] = parse_number(val("credits"))
+                day = normalize_day(val("day"))
+                period = parse_period(val("period"))
+                if day and period:
+                    meeting = {
+                        "day": day,
+                        "period": period,
+                        "classroom": clean_text(val("classroom")),
+                        "mode": normalize_mode(val("mode")),
+                    }
+                    if meeting not in section["meetings"]:
+                        section["meetings"].append(meeting)
+
+                # Some sheets repeat metadata only on the first row; keep first non-empty value.
+                for key, current in [
+                    ("instructor", clean_text(val("instructor"))),
+                    ("language", clean_text(val("language"))),
+                    ("field", clean_text(val("field"))),
+                    ("area", clean_text(val("area"))),
+                ]:
+                    if not section[key] and current:
+                        section[key] = current
+                if section["availableFromSemester"] is None:
+                    section["availableFromSemester"] = parse_semester_min(val("semester"))
+                if section["credits"] is None:
+                    section["credits"] = parse_number(val("credits"))
+
+    finally:
+        wb.close()
 
     if not sections:
         raise ValueError("No timetable rows were recognized. The APU spreadsheet layout may have changed.")
@@ -381,38 +393,41 @@ def parse_subject_list(path: Path) -> dict[str, dict[str, Any]]:
     wb = load_workbook(path, read_only=True, data_only=True)
     subjects: dict[str, dict[str, Any]] = {}
 
-    for ws in wb.worksheets:
-        header_row, columns = find_header(ws, SUBJECT_HEADER_ALIASES, {"subject_code", "name", "credits"}, scan_rows=100)
-        if not header_row or not columns:
-            continue
-
-        for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
-            def val(field: str):
-                idx = columns.get(field)
-                return row[idx] if idx is not None and idx < len(row) else None
-
-            raw_code = code_text(val("subject_code"))
-            code = base_subject_code(raw_code)
-            name = clean_text(val("name"))
-            credits = parse_number(val("credits"))
-            if not code or not name or credits is None:
+    try:
+        for ws in wb.worksheets:
+            header_row, columns = find_header(ws, SUBJECT_HEADER_ALIASES, {"subject_code", "name", "credits"}, scan_rows=100)
+            if not header_row or not columns:
                 continue
 
-            subjects[code] = {
-                "subjectCode": code,
-                "name": name,
-                "credits": credits,
-                "availableFromSemester": parse_semester_min(val("semester")),
-                "field": clean_text(val("field")),
-                "area": clean_text(val("area")),
-                "prerequisites": {
-                    "JST": clean_text(val("prereq_jst")),
-                    "JAT": clean_text(val("prereq_jat")),
-                    "E": clean_text(val("prereq_e")),
-                },
-                "reregister": clean_text(val("reregister")),
-                "pfEvaluation": clean_text(val("pf")),
-            }
+            for row in ws.iter_rows(min_row=header_row + 1, values_only=True):
+                def val(field: str):
+                    idx = columns.get(field)
+                    return row[idx] if idx is not None and idx < len(row) else None
+
+                raw_code = code_text(val("subject_code"))
+                code = base_subject_code(raw_code)
+                name = clean_text(val("name"))
+                credits = parse_number(val("credits"))
+                if not code or not name or credits is None:
+                    continue
+
+                subjects[code] = {
+                    "subjectCode": code,
+                    "name": name,
+                    "credits": credits,
+                    "availableFromSemester": parse_semester_min(val("semester")),
+                    "field": clean_text(val("field")),
+                    "area": clean_text(val("area")),
+                    "prerequisites": {
+                        "JST": clean_text(val("prereq_jst")),
+                        "JAT": clean_text(val("prereq_jat")),
+                        "E": clean_text(val("prereq_e")),
+                    },
+                    "reregister": clean_text(val("reregister")),
+                    "pfEvaluation": clean_text(val("pf")),
+                }
+    finally:
+        wb.close()
 
     return subjects
 
@@ -504,18 +519,14 @@ def load_or_build_data(college: str, allow_download: bool = True) -> dict[str, A
         data = json.loads(cached.read_text(encoding="utf-8"))
         if data.get("schemaVersion") == NORMALIZED_SCHEMA_VERSION:
             # Syllabus URL mappings can be updated independently from timetable data.
-            apply_syllabus_links(data.get("sections", []), data.get("academicYear"))
-            for subject in data.get("subjects", []):
-                apply_syllabus_links(subject.get("sections", []), data.get("academicYear"))
+            attach_syllabus_links(data)
             return data
         if timetable_path.exists() and subject_path.exists():
             data = build_normalized(college, timetable_path, subject_path)
             cached.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
             return data
         # Old cache can still receive verified manual links even if the source XLSX is unavailable.
-        apply_syllabus_links(data.get("sections", []), data.get("academicYear"))
-        for subject in data.get("subjects", []):
-            apply_syllabus_links(subject.get("sections", []), data.get("academicYear"))
+        attach_syllabus_links(data)
         return data
 
     if allow_download:
@@ -891,167 +902,3 @@ def generate_schedules(data: dict[str, Any], config: dict[str, Any]) -> dict[str
                 break
 
     return {"results": results[:3], "errors": []}
-
-
-class Handler(BaseHTTPRequestHandler):
-    server_version = "APUScheduleBuilder/1.1"
-
-    def log_message(self, format: str, *args: Any) -> None:
-        print("[web]", format % args)
-
-    def send_json(self, payload: Any, status: int = 200) -> None:
-        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def send_file(self, path: Path, content_type: str) -> None:
-        if not path.exists():
-            self.send_error(HTTPStatus.NOT_FOUND)
-            return
-        body = path.read_bytes()
-        self.send_response(200)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def read_json(self) -> dict[str, Any]:
-        length = int(self.headers.get("Content-Length", "0"))
-        if length > 2_000_000:
-            raise ValueError("Request body too large.")
-        raw = self.rfile.read(length) if length else b"{}"
-        return json.loads(raw.decode("utf-8"))
-
-    def do_GET(self) -> None:
-        parsed = urlparse(self.path)
-        if parsed.path == "/":
-            self.send_file(WEB_DIR / "index.html", "text/html; charset=utf-8")
-            return
-        if parsed.path == "/api/info":
-            colleges = {}
-            for college in OFFICIAL_FILES:
-                t, s = source_paths(college)
-                colleges[college] = {
-                    "normalized": normalized_path(college).exists(),
-                    "timetableFile": t.exists(),
-                    "subjectFile": s.exists(),
-                    "officialUrls": OFFICIAL_FILES[college],
-                }
-            self.send_json({"version": DATA_VERSION, "colleges": colleges})
-            return
-        if parsed.path == "/api/courses":
-            query = parse_qs(parsed.query)
-            college = query.get("college", ["APM"])[0].upper()
-            try:
-                data = load_or_build_data(college, allow_download=False)
-                self.send_json(data)
-            except Exception as exc:
-                self.send_json({"error": str(exc), "college": college, "officialUrls": OFFICIAL_FILES.get(college)}, 404)
-            return
-        self.send_error(HTTPStatus.NOT_FOUND)
-
-    def do_POST(self) -> None:
-        parsed = urlparse(self.path)
-        try:
-            if parsed.path == "/api/load":
-                payload = self.read_json()
-                college = str(payload.get("college", "APM")).upper()
-                refresh = bool(payload.get("refresh", False))
-                if refresh:
-                    invalidate_college(college)
-                    t, s = source_paths(college)
-                    if t.exists(): t.unlink()
-                    if s.exists(): s.unlink()
-                data = load_or_build_data(college, allow_download=True)
-                self.send_json(data)
-                return
-
-            if parsed.path == "/api/upload":
-                query = parse_qs(parsed.query)
-                college = query.get("college", ["APM"])[0].upper()
-                kind = query.get("kind", [""])[0]
-                if college not in OFFICIAL_FILES or kind not in {"timetable", "subjects"}:
-                    raise ValueError("Invalid college or file kind.")
-                length = int(self.headers.get("Content-Length", "0"))
-                if length <= 0 or length > 20_000_000:
-                    raise ValueError("XLSX file must be between 1 byte and 20 MB.")
-                body = self.rfile.read(length)
-                if not body.startswith(b"PK"):
-                    raise ValueError("This does not look like an .xlsx file.")
-                timetable_path, subject_path = source_paths(college)
-                destination = timetable_path if kind == "timetable" else subject_path
-                destination.write_bytes(body)
-                invalidate_college(college)
-                parsed_data = None
-                if timetable_path.exists() and subject_path.exists():
-                    parsed_data = load_or_build_data(college, allow_download=False)
-                self.send_json({"ok": True, "parsed": parsed_data})
-                return
-
-            if parsed.path == "/api/syllabus-sync":
-                payload = self.read_json()
-                college = str(payload.get("college", "APM")).upper()
-                data = load_or_build_data(college, allow_download=False)
-                year = data.get("academicYear")
-                if not year:
-                    raise ValueError("Academic year could not be detected from the timetable.")
-                from syllabus_sync import sync_links
-                result = sync_links(
-                    sections=data.get("sections", []),
-                    year=int(year),
-                    mapping_path=SYLLABUS_LINKS_FILE,
-                    headless=bool(payload.get("headless", False)),
-                )
-                # Apply newly harvested mappings without forcing another XLSX download.
-                apply_syllabus_links(data.get("sections", []), int(year))
-                for subject in data.get("subjects", []):
-                    apply_syllabus_links(subject.get("sections", []), int(year))
-                normalized_path(college).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-                self.send_json(result)
-                return
-
-            if parsed.path == "/api/generate":
-                payload = self.read_json()
-                college = str(payload.get("college", "APM")).upper()
-                data = load_or_build_data(college, allow_download=False)
-                result = generate_schedules(data, payload)
-                self.send_json(result)
-                return
-
-            self.send_error(HTTPStatus.NOT_FOUND)
-        except Exception as exc:
-            self.send_json({"error": str(exc)}, 400)
-
-
-def find_free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return int(sock.getsockname()[1])
-
-
-def main() -> None:
-    # Keep a stable browser origin so localStorage survives normal app restarts.
-    # Fall back to a free port only when another process already owns 8765.
-    try:
-        port = 8765
-        server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    except OSError:
-        port = find_free_port()
-        server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    url = f"http://127.0.0.1:{port}/"
-    print(f"APU Schedule Builder running at {url}")
-    print("Press Ctrl+C to stop.")
-    threading.Timer(0.7, lambda: webbrowser.open(url)).start()
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        server.server_close()
-
-
-if __name__ == "__main__":
-    main()

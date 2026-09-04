@@ -89,9 +89,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Failed to install Python packages.' }
 
 Write-Host ''
 Write-Host 'Verifying installation...'
-& $PythonExe -c "import sys, openpyxl, selenium; print('Python', sys.version.split()[0]); print('openpyxl', openpyxl.__version__); print('selenium', selenium.__version__)"
+& $PythonExe -c "import sys, openpyxl; print('Python', sys.version.split()[0]); print('openpyxl', openpyxl.__version__)"
 if ($LASTEXITCODE -ne 0) { throw 'Dependency verification failed.' }
 
 Write-Host ''
-Write-Host 'READY. Double-click run_windows.bat to start APU Schedule Builder.' -ForegroundColor Green
+Write-Host 'READY. Double-click build_windows.bat to build and preview the site.' -ForegroundColor Green
 Read-Host 'Press Enter to close'

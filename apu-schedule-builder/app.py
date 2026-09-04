@@ -5,22 +5,14 @@ import os
 import ssl
 import subprocess
 from pathlib import Path
-from urllib.parse import urlparse
 
 import app_backend as _backend
-from syllabus_mapping import load_verified_mapping, mapping_fingerprint
+from syllabus_mapping import mapping_fingerprint
 from app_backend import *  # noqa: F401,F403 - preserve the public API used by tests and scripts
 
 
 _original_download_file = _backend.download_file
 _original_load_or_build_data = _backend.load_or_build_data
-_original_do_GET = _backend.Handler.do_GET
-_STATIC_FILES = {
-    "/style.css": ("style.css", "text/css; charset=utf-8"),
-    "/app-core.js": ("app-core.js", "application/javascript; charset=utf-8"),
-    "/app-ui.js": ("app-ui.js", "application/javascript; charset=utf-8"),
-    "/app-events.js": ("app-events.js", "application/javascript; charset=utf-8"),
-}
 
 
 def _running_on_windows() -> bool:
@@ -98,21 +90,13 @@ _backend.download_file = _download_file_with_windows_cert_fallback
 download_file = _download_file_with_windows_cert_fallback
 
 
-def _load_syllabus_link_overrides_from_repository() -> dict[str, str]:
-    return load_verified_mapping(_backend.DATA_DIR)
-
-
-# The schedule app and the separate collector use the same verified mapping reader.
-_backend.load_syllabus_link_overrides = _load_syllabus_link_overrides_from_repository
-load_syllabus_link_overrides = _load_syllabus_link_overrides_from_repository
-
-
 def _load_or_build_data_with_mapping_cache(college: str, allow_download: bool = True) -> dict:
     college = college.upper()
     fingerprint = mapping_fingerprint(_backend.DATA_DIR)
     cached = _backend.normalized_path(college)
     timetable_path, subject_path = _backend.source_paths(college)
     cache_verified = True
+    needs_write = True
 
     if cached.exists():
         try:
@@ -120,6 +104,12 @@ def _load_or_build_data_with_mapping_cache(college: str, allow_download: bool = 
         except (OSError, json.JSONDecodeError):
             cached_data = {}
         previous = cached_data.get("syllabusMappingFingerprint")
+        # A cache that already carries this fingerprint and schema needs no rewrite,
+        # so a plain read stays a read.
+        needs_write = (
+            previous != fingerprint
+            or cached_data.get("schemaVersion") != _backend.NORMALIZED_SCHEMA_VERSION
+        )
         if previous != fingerprint:
             if timetable_path.exists() and subject_path.exists():
                 cached.unlink(missing_ok=True)
@@ -130,7 +120,8 @@ def _load_or_build_data_with_mapping_cache(college: str, allow_download: bool = 
     if cache_verified:
         data["syllabusMappingFingerprint"] = fingerprint
         data["syllabusMappingCacheVerified"] = True
-        cached.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        if needs_write:
+            cached.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     else:
         data["syllabusMappingCacheVerified"] = False
     return data
@@ -138,21 +129,3 @@ def _load_or_build_data_with_mapping_cache(college: str, allow_download: bool = 
 
 _backend.load_or_build_data = _load_or_build_data_with_mapping_cache
 load_or_build_data = _load_or_build_data_with_mapping_cache
-
-
-def _do_GET_with_static_assets(self) -> None:
-    parsed = urlparse(self.path)
-    static = _STATIC_FILES.get(parsed.path)
-    if static:
-        filename, content_type = static
-        self.send_file(_backend.WEB_DIR / filename, content_type)
-        return
-    _original_do_GET(self)
-
-
-_backend.Handler.do_GET = _do_GET_with_static_assets
-Handler = _backend.Handler
-
-
-if __name__ == "__main__":
-    _backend.main()
