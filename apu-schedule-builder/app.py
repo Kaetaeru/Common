@@ -8,18 +8,26 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import app_backend as _backend
-from syllabus_mapping import load_verified_mapping, mapping_fingerprint
+from aplus_reviews import enrich_schedule_data
+from language_rules import annotate_schedule_data, filter_candidate_subjects
+from syllabus_mapping import load_verified_mapping, mapping_fingerprint, parse_direct_syllabus_url
 from app_backend import *  # noqa: F401,F403 - preserve the public API used by tests and scripts
 
 
 _original_download_file = _backend.download_file
 _original_load_or_build_data = _backend.load_or_build_data
 _original_do_GET = _backend.Handler.do_GET
+_original_solve_variant = _backend.solve_variant
 _STATIC_FILES = {
     "/style.css": ("style.css", "text/css; charset=utf-8"),
+    "/app-i18n.js": ("app-i18n.js", "application/javascript; charset=utf-8"),
     "/app-core.js": ("app-core.js", "application/javascript; charset=utf-8"),
     "/app-ui.js": ("app-ui.js", "application/javascript; charset=utf-8"),
     "/app-events.js": ("app-events.js", "application/javascript; charset=utf-8"),
+    "/app-profile.js": ("app-profile.js", "application/javascript; charset=utf-8"),
+    "/app-filters.js": ("app-filters.js", "application/javascript; charset=utf-8"),
+    "/aplus.css": ("aplus.css", "text/css; charset=utf-8"),
+    "/filters.css": ("filters.css", "text/css; charset=utf-8"),
 }
 
 
@@ -107,6 +115,28 @@ _backend.load_syllabus_link_overrides = _load_syllabus_link_overrides_from_repos
 load_syllabus_link_overrides = _load_syllabus_link_overrides_from_repository
 
 
+def _apply_verified_syllabus_links(sections, academic_year) -> None:
+    overrides = _load_syllabus_link_overrides_from_repository()
+    for section in sections:
+        class_code = _backend.code_text(section.get("classCode"))
+        direct = _backend.clean_text(section.get("syllabusUrl"))
+        if direct and _backend.is_direct_syllabus_url(direct, class_code, academic_year):
+            continue
+        section.pop("syllabusUrl", None)
+        if academic_year is None:
+            continue
+        override = overrides.get(f"{academic_year}:{class_code}", "")
+        parsed = parse_direct_syllabus_url(override)
+        # The repository reader already validated the key. For verified grouped
+        # aliases, only the URL year must equal the active academic year.
+        if parsed and parsed[0] == int(academic_year):
+            section["syllabusUrl"] = override
+
+
+_backend.apply_syllabus_links = _apply_verified_syllabus_links
+apply_syllabus_links = _apply_verified_syllabus_links
+
+
 def _load_or_build_data_with_mapping_cache(college: str, allow_download: bool = True) -> dict:
     college = college.upper()
     fingerprint = mapping_fingerprint(_backend.DATA_DIR)
@@ -133,11 +163,22 @@ def _load_or_build_data_with_mapping_cache(college: str, allow_download: bool = 
         cached.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     else:
         data["syllabusMappingCacheVerified"] = False
-    return data
+
+    # A+ is optional live enrichment. It is applied after the APU cache write so
+    # ratings never become stale data inside the normalized timetable cache.
+    return enrich_schedule_data(annotate_schedule_data(data))
 
 
 _backend.load_or_build_data = _load_or_build_data_with_mapping_cache
 load_or_build_data = _load_or_build_data_with_mapping_cache
+
+
+def _solve_variant_with_language_profile(data, config, variant, beam_size=220):
+    return _original_solve_variant(filter_candidate_subjects(data, config), config, variant, beam_size)
+
+
+_backend.solve_variant = _solve_variant_with_language_profile
+solve_variant = _solve_variant_with_language_profile
 
 
 def _do_GET_with_static_assets(self) -> None:
