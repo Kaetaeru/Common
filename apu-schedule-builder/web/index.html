@@ -38,7 +38,9 @@
         <div class="list-summary" id="listSummary" data-i18n="app.loading">Loading data...</div>
         <div class="course-list" id="courseList"><div class="empty" data-i18n="app.checkingApu">Checking APU data.</div></div>
       </div>
-      <div class="sidebar-body hidden" id="myPane"><div class="my-list" id="myList"></div></div>
+      <div class="sidebar-body hidden" id="myPane">
+        <div class="my-list" id="myList"></div>
+      </div>
     </aside>
 
     <main class="main">
@@ -46,7 +48,11 @@
         <div class="plan-title plan-title-with-presets">
           <div class="plan-label-stack">
             <h2 id="planHeading" data-i18n="app.mySchedule">My schedule</h2>
-            <div class="preset-switch" id="presetSwitch" aria-label="Schedule presets"><button class="active" data-preset="A">Plan A</button><button data-preset="B">Plan B</button><button data-preset="C">Plan C</button></div>
+            <div class="preset-switch" id="presetSwitch" aria-label="Schedule presets">
+              <button class="active" data-preset="A">Plan A</button>
+              <button data-preset="B">Plan B</button>
+              <button data-preset="C">Plan C</button>
+            </div>
           </div>
           <div class="quarter-switch"><button class="active" data-quarter="Q1">1Q</button><button data-quarter="Q2">2Q</button></div>
         </div>
@@ -56,9 +62,17 @@
           <div class="metric"><strong id="gapMetric">0</strong><span data-i18n="app.gaps">Free periods</span></div>
           <div class="metric"><strong id="classMetric">0</strong><span data-i18n="app.selectedClasses">Selected classes</span></div>
         </div>
-        <div class="main-actions"><button class="secondary-button" id="clearPlanButton" data-i18n="app.clearSelection">Clear plan</button><button class="primary-button" id="fillButton" data-i18n="app.autofill">Auto-fill remaining credits</button></div>
+        <div class="main-actions">
+          <button class="secondary-button" id="clearPlanButton" data-i18n="app.clearSelection">Clear plan</button>
+          <button class="primary-button" id="fillButton" data-i18n="app.autofill">Auto-fill remaining credits</button>
+        </div>
       </div>
-      <div class="calendar-area"><div class="calendar-card"><div class="calendar-help"><span><strong data-i18n="app.calendarHelpPrefix">Click an empty cell</strong> <span data-i18n="app.calendarHelpSuffix">to find courses at that time or mark it unavailable.</span></span><span id="quarterHelp">1Q schedule</span></div><div id="calendar"></div></div></div>
+      <div class="calendar-area">
+        <div class="calendar-card">
+          <div class="calendar-help"><span><strong data-i18n="app.calendarHelpPrefix">Click an empty cell</strong> <span data-i18n="app.calendarHelpSuffix">to find courses at that time or mark it unavailable.</span></span><span id="quarterHelp">1Q schedule</span></div>
+          <div id="calendar"></div>
+        </div>
+      </div>
     </main>
   </div>
 </div>
@@ -66,7 +80,10 @@
 <aside class="drawer" id="settingsDrawer">
   <div class="drawer-head"><strong data-i18n="app.settings">Settings</strong><button class="icon-button" data-close-drawer>×</button></div>
   <div class="drawer-body">
-    <section class="drawer-section"><h3 data-i18n="settings.interface">Interface</h3><div class="drawer-field"><label data-i18n="settings.displayLanguage">Display language</label><select id="uiLanguage"><option value="en">English</option><option value="ja">日本語</option></select></div></section>
+    <section class="drawer-section">
+      <h3 data-i18n="settings.interface">Interface</h3>
+      <div class="drawer-field"><label data-i18n="settings.displayLanguage">Display language</label><select id="uiLanguage"><option value="en">English</option><option value="ja">日本語</option></select></div>
+    </section>
     <section class="drawer-section">
       <h3 data-i18n="settings.student">Student profile</h3>
       <div class="drawer-row"><div class="drawer-field"><label data-i18n="settings.college">College</label><select id="college"><option>APM</option><option>APS</option><option>ST</option></select></div><div class="drawer-field"><label data-i18n="settings.semester">Current semester</label><select id="semesterLevel"></select></div></div>
@@ -74,13 +91,36 @@
       <div class="drawer-field"><label id="languageLevelLabel" data-i18n="settings.completedLanguage">Opposite language · highest completed level</label><select id="languageLevel"></select><div class="drawer-help" id="languageLevelHelp" data-i18n="settings.languageHelp">Core language courses are filtered using your admission basis and completed level.</div></div>
       <label class="check-line"><input id="accelerated" type="checkbox"> <span data-i18n="settings.accelerated">Accelerated Graduation</span></label>
     </section>
-    <section class="drawer-section"><h3 data-i18n="settings.fixed">University-registered / fixed classes</h3><div class="fixed-add"><input id="universityCode" type="text" placeholder="Class code"><button class="primary-button" id="addUniversityButton" data-i18n="settings.add">Add</button></div><div class="fixed-list" id="universityList"></div><div class="danger-note" style="margin-top:9px" data-i18n="settings.fixedHelp">Add language or required classes assigned by APU here. Fixed classes cannot be removed by planning rules or blocked time slots.</div></section>
-    <section class="drawer-section"><h3 data-i18n="settings.officialData">APU official data</h3><div class="status-box" id="loadStatus" data-i18n="settings.checking">Checking...</div><div class="drawer-actions"><button class="add" id="loadButton" data-i18n="settings.loadOfficial">Load official data</button><button id="refreshButton" data-i18n="settings.refresh">Refresh</button></div><div class="status-box" id="syllabusSyncStatus" style="margin-top:10px" data-i18n="settings.syllabusPending">Syllabus links: check after data loads</div><div class="drawer-help" data-i18n="settings.bundleInfo">This standalone build includes 836 AY2026 Fall APM syllabus mappings.</div><div class="drawer-help" data-i18n="settings.sourceInfo">Timetable 2026-09-01 · Subject List 2026-03-13</div></section>
+    <section class="drawer-section">
+      <h3 data-i18n="settings.fixed">University-registered / fixed classes</h3>
+      <div class="fixed-add"><input id="universityCode" type="text" placeholder="Class code"><button class="primary-button" id="addUniversityButton" data-i18n="settings.add">Add</button></div>
+      <div class="fixed-list" id="universityList"></div>
+      <div class="danger-note" style="margin-top:9px" data-i18n="settings.fixedHelp">Add language or required classes assigned by APU here. Fixed classes cannot be removed by planning rules or blocked time slots.</div>
+    </section>
+    <section class="drawer-section">
+      <h3 data-i18n="settings.officialData">APU official data</h3>
+      <div class="status-box" id="loadStatus" data-i18n="settings.checking">Checking...</div>
+      <div class="drawer-actions"><button class="add" id="loadButton" data-i18n="settings.loadOfficial">Load official data</button><button id="refreshButton" data-i18n="settings.refresh">Refresh</button></div>
+      <div class="status-box" id="syllabusSyncStatus" style="margin-top:10px" data-i18n="settings.syllabusPending">Syllabus links: check after data loads</div>
+      <div class="drawer-help" data-i18n="settings.bundleInfo">This standalone build includes 836 AY2026 Fall APM syllabus mappings.</div>
+      <div class="drawer-help" data-i18n="settings.sourceInfo">Timetable 2026-09-01 · Subject List 2026-03-13</div>
+    </section>
   </div>
 </aside>
-<aside class="drawer" id="detailDrawer"><div class="drawer-head"><strong data-i18n="app.detail">Class details</strong><button class="icon-button" data-close-drawer>×</button></div><div class="drawer-body" id="detailBody"></div></aside>
+
+<aside class="drawer" id="detailDrawer">
+  <div class="drawer-head"><strong data-i18n="app.detail">Class details</strong><button class="icon-button" data-close-drawer>×</button></div>
+  <div class="drawer-body" id="detailBody"></div>
+</aside>
+
 <div class="suggestions hidden" id="suggestions"><div class="suggest-head"><div><strong data-i18n="suggestions.title">Auto-fill alternatives</strong><span id="suggestText"></span></div><button class="icon-button" id="closeSuggestions">×</button></div><div class="suggest-list" id="suggestList"></div></div>
 <div class="toast" id="toast"></div>
-<script src="/app-i18n.js"></script><script src="/app-core.js"></script><script src="/app-ui.js"></script><script src="/app-profile.js"></script><script src="/app-events.js"></script>
+
+<script src="/app-i18n.js"></script>
+<script src="/app-core.js"></script>
+<script src="/app-ui.js"></script>
+<script src="/app-profile.js"></script>
+<script src="/app-filters.js"></script>
+<script src="/app-events.js"></script>
 </body>
 </html>
