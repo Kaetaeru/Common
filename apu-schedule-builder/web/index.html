@@ -15,7 +15,7 @@
       <button class="top-button" id="profileButton">APM · 5 Semester</button>
       <span class="top-chip" id="dataBadge" data-i18n="app.dataChecking">Checking data</span>
       <button class="top-button theme-button" id="themeButton" aria-label="Switch screen theme"><span class="theme-dot"></span><span id="themeText">Light mode</span></button>
-      <button class="top-button" id="settingsButton" data-i18n="app.settings">Settings</button>
+      <button class="top-button" id="helpButton" data-i18n="app.help">Help</button><button class="top-button" id="settingsButton" data-i18n="app.settings">Settings</button>
     </div>
   </header>
 
@@ -106,6 +106,11 @@
       <div class="drawer-help" data-i18n="settings.sourceInfo">Timetable 2026-09-01 · Subject List 2026-03-13</div>
     </section>
   </div>
+</aside>
+
+<aside class="drawer" id="helpDrawer">
+  <div class="drawer-head"><strong data-i18n="help.title">Help</strong><button class="icon-button" data-close-drawer>×</button></div>
+  <div class="drawer-body" id="helpBody"></div>
 </aside>
 
 <aside class="drawer" id="detailDrawer">
