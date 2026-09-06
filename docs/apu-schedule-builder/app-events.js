@@ -30,5 +30,7 @@ async function switchCollege(){state.data=null;resetAllPresets();state.universit
 $('college').addEventListener('change',()=>{if(state.profileEditing)return;switchCollege()});
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){state.activeSlot=null;closeDrawers();renderCalendar()}});
-loadTheme();loadPrefs();applyStaticTranslations();clampTarget();renderTop();renderTabs();renderCalendar();renderProfileSummary();
+loadTheme();loadPrefs();applyStaticTranslations();clampTarget();renderTop();renderTabs();renderCalendar();document.body.dataset.mobileView='courses';
+$('mobileViews').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(!b)return;document.body.dataset.mobileView=b.dataset.view;document.querySelectorAll('#mobileViews [data-view]').forEach(x=>x.classList.toggle('active',x===b))});
+renderProfileSummary();
 tryCached().then(ok=>{if(!ok){setDataStatus(tr('data.needLoad'));openDrawer('settingsDrawer');return}if(!state.profileConfirmed||!helpSeen()){openHelp();markHelpSeen()}});

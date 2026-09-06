@@ -106,7 +106,7 @@ html[data-theme="light"]{
 
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;min-width:1120px;background:var(--bg);color:var(--ink);font-size:var(--fs-body)}
+body{margin:0;min-width:320px;background:var(--bg);color:var(--ink);font-size:var(--fs-body)}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none}
 .hidden{display:none!important}
@@ -573,3 +573,77 @@ html:not([data-theme="light"]) .aplus-badge:hover{background:var(--surface-hover
 }
 .setup-callout h3{margin-top:0;color:var(--accent-strong)}
 .setup-callout .drawer-actions{margin-top:12px}
+
+/* ── phones ───────────────────────────────────────────────────────────────
+ * The list and the grid cannot share a phone screen, so one is shown at a
+ * time and a segmented bar switches between them. Everything else keeps the
+ * desktop behaviour, including the drawers, which become full-width sheets. */
+
+.mobile-views{display:none}
+
+@media(max-width:880px){
+  .app{height:100dvh}
+
+  .topbar{height:auto;min-height:56px;padding:9px 12px;gap:8px;flex-wrap:wrap}
+  .brand small{display:none}
+  .brand h1{font-size:17px}
+  .logo{width:30px;height:30px}
+  #dataBadge{display:none}
+  .top-actions{gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .top-chip,.top-button{padding:8px 10px}
+
+  .mobile-views{
+    display:flex;align-items:center;gap:6px;padding:8px 12px;flex:0 0 auto;
+    background:var(--surface);border-bottom:1px solid var(--line)
+  }
+  .mobile-views button{
+    flex:1;padding:10px;border-radius:var(--radius-sm);
+    background:var(--surface-2);color:var(--muted);
+    font-size:var(--fs-body);font-weight:500
+  }
+  .mobile-views button.active{background:var(--accent);color:var(--on-accent);font-weight:600}
+  .mobile-credits{
+    flex:0 0 auto;padding-left:6px;color:var(--ink-2);
+    font-size:var(--fs-meta);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap
+  }
+
+  .workspace{grid-template-columns:1fr;gap:0}
+  body[data-mobile-view="schedule"] .sidebar{display:none}
+  body[data-mobile-view="courses"] .main{display:none}
+
+  /* Full-width sheets instead of side panels. */
+  .drawer{width:100%;right:-100%;box-shadow:none}
+  .drawer-body{padding:16px 14px}
+  .drawer-row{grid-template-columns:1fr}
+
+  /* Actions move under the class name so the title keeps the full width. */
+  .class-card{grid-template-columns:1fr;gap:10px}
+  .class-actions{flex-direction:row;min-width:0}
+  .class-action,.syllabus-action{flex:1;min-width:0;padding:10px}
+  .sidebar-tab{padding:10px}
+  .quick-filters button{padding:7px 11px;font-size:var(--fs-meta)}
+
+  .main-head{min-height:0;padding:10px 12px;gap:10px;flex-wrap:wrap}
+  .plan-title{width:100%}
+  .plan-metrics{width:100%;overflow-x:auto;padding-bottom:2px}
+  .metric{flex:0 0 auto}
+  .main-actions{width:100%}
+  .main-actions button{flex:1}
+
+  /* Five weekday columns need more width than a phone has: let the grid scroll. */
+  .calendar-area{padding:10px}
+  .calendar-card{overflow-x:auto}
+  .calendar{min-width:620px}
+  .calendar td{height:92px}
+
+  .suggestions{left:12px;right:12px;bottom:12px;padding:12px}
+  .suggest-list{flex-direction:column}
+  .toast{left:12px;right:12px;transform:translateY(20px);text-align:center}
+  .toast.show{transform:translateY(0)}
+}
+
+@media(max-width:420px){
+  .brand h1{font-size:16px}
+  .mobile-credits{display:none}
+  .filters{grid-template-columns:1fr}
+}

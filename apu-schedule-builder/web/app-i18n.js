@@ -2,6 +2,8 @@ const LOCALE_KEY='apu-schedule-locale-v01';
 const SUPPORTED_LOCALES=['en','ja'];
 const TRANSLATIONS={
   en:{
+    'mobile.courses':'Courses',
+    'mobile.schedule':'Schedule',
     'profile.title':'Your profile',
     'profile.setupTitle':'Set up',
     'profile.setupIntro':'Your college and semester decide which classes you can take, so set them once here. You can change them later from Settings.',
@@ -48,6 +50,8 @@ const TRANSLATIONS={
     'autofill.already':'Target credits are already reached.','autofill.calculating':'Calculating...','autofill.failed':'Calculation failed','autofill.none':'No valid combination was found.','autofill.option':'Option {number} · {credits} credits','autofill.optionMeta':'{days} campus days/week · {count} new Classes','autofill.preview':'Preview','autofill.apply':'Apply this plan','autofill.goal':' · Keep current choices and approach {credits} target credits','autofill.applied':'Schedule alternative applied.','profile.revalidate':'Eligibility change removed {count} selected courses across your plans.','profile.fixedSemester':'{count} fixed classes do not match the current semester.','aplus.noReviews':'No reviews','aplus.reviews':'{count} review{suffix}','aplus.recommend':'{percent}% recommend','aplus.open':'Open A+ course reviews','aplus.direct':'A+ subject page ↗'
   },
   ja:{
+    'mobile.courses':'授業を探す',
+    'mobile.schedule':'時間割',
     'profile.title':'プロフィール',
     'profile.setupTitle':'初期設定',
     'profile.setupIntro':'所属学部とセメスターによって履修できる授業が決まります。ここで一度設定してください。あとから設定で変更できます。',
