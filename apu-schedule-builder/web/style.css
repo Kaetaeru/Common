@@ -623,18 +623,38 @@ html:not([data-theme="light"]) .aplus-badge:hover{background:var(--surface-hover
   .sidebar-tab{padding:10px}
   .quick-filters button{padding:7px 11px;font-size:var(--fs-meta)}
 
-  .main-head{min-height:0;padding:10px 12px;gap:10px;flex-wrap:wrap}
-  .plan-title{width:100%}
-  .plan-metrics{width:100%;overflow-x:auto;padding-bottom:2px}
-  .metric{flex:0 0 auto}
-  .main-actions{width:100%}
+  /* The header is trimmed so the week itself gets the screen. */
+  .main-head{min-height:0;padding:8px 12px;gap:8px;flex-wrap:wrap}
+  .plan-title h2{display:none}
+  .plan-title{flex:1 1 auto;min-width:0}
+  .quarter-switch{flex:0 0 auto}
+  .plan-metrics{width:100%;min-width:0;gap:4px;overflow-x:auto}
+  .metric{flex:0 0 auto;padding:4px 9px;min-width:0}
+  .metric strong{font-size:var(--fs-body)}
+  .main-actions{width:100%;gap:6px}
   .main-actions button{flex:1}
 
-  /* Five weekday columns need more width than a phone has: let the grid scroll. */
-  .calendar-area{padding:10px}
-  .calendar-card{overflow-x:auto}
-  .calendar{min-width:620px}
-  .calendar td{height:92px}
+  /* All five days fit the width, and the rows share whatever height is left,
+     so a normal week needs no scrolling in either direction. */
+  .calendar-area{padding:8px;display:flex;min-height:0}
+  .calendar-card{flex:1;min-height:0;overflow:auto}
+  .calendar-help{min-height:0;padding:6px 10px;gap:8px;font-size:var(--fs-micro)}
+  .calendar{min-width:0}
+  .calendar td{height:calc((100dvh - 405px)/6);min-height:46px}
+  .calendar th{height:28px;font-size:var(--fs-micro)}
+  .calendar th:first-child{width:30px}
+  .calendar td{padding:3px}
+  .period{font-size:var(--fs-micro);padding-top:6px!important}
+  .period::after{display:none}
+
+  .meeting-card{min-height:0;margin-bottom:3px;padding:4px 5px 4px 7px;border-radius:5px}
+  .meeting-card::before{width:2px}
+  .meeting-card strong{
+    font-size:10px;line-height:1.25;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden
+  }
+  .meeting-card span{display:none}
+  .slot.blocked::after,.slot-hint{font-size:10px}
 
   .suggestions{left:12px;right:12px;bottom:12px;padding:12px}
   .suggest-list{flex-direction:column}
