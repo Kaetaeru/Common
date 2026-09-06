@@ -86,10 +86,8 @@
     </section>
     <section class="drawer-section">
       <h3 data-i18n="settings.student">Student profile</h3>
-      <div class="drawer-row"><div class="drawer-field"><label data-i18n="settings.college">College</label><select id="college"><option>APM</option><option>APS</option><option>ST</option></select></div><div class="drawer-field"><label data-i18n="settings.semester">Current semester</label><select id="semesterLevel"></select></div></div>
-      <div class="drawer-row"><div class="drawer-field"><label data-i18n="settings.track">Admission language / Track</label><select id="track"><option value="E">English Basis</option><option value="JST">Japanese Basis · English Standard</option><option value="JAT">Japanese Basis · English Advanced</option></select></div><div class="drawer-field"><label data-i18n="settings.targetCredits">Target credits</label><input id="targetCredits" type="number" min="0" step="1" value="18"></div></div>
-      <div class="drawer-field"><label id="languageLevelLabel" data-i18n="settings.completedLanguage">Opposite language · highest completed level</label><select id="languageLevel"></select><div class="drawer-help" id="languageLevelHelp" data-i18n="settings.languageHelp">Core language courses are filtered using your admission basis and completed level.</div></div>
-      <label class="check-line"><input id="accelerated" type="checkbox"> <span data-i18n="settings.accelerated">Accelerated Graduation</span></label>
+      <div class="profile-summary" id="profileSummary"></div>
+      <div class="drawer-actions"><button class="add" id="profileEditButton" data-i18n="profile.edit">Edit profile</button></div>
     </section>
     <section class="drawer-section">
       <h3 data-i18n="settings.fixed">University-registered / fixed classes</h3>
@@ -105,6 +103,23 @@
       <div class="drawer-help" data-i18n="settings.bundleInfo">This standalone build includes 836 AY2026 Fall APM syllabus mappings.</div>
       <div class="drawer-help" data-i18n="settings.sourceInfo">Timetable 2026-09-01 · Subject List 2026-03-13</div>
     </section>
+  </div>
+</aside>
+
+<aside class="drawer" id="profileDrawer">
+  <div class="drawer-head"><strong id="profileDrawerTitle" data-i18n="profile.title">Your profile</strong><button class="icon-button" data-close-drawer>×</button></div>
+  <div class="drawer-body">
+    <p class="help-text" id="profileIntro"></p>
+    <section class="drawer-section" style="margin-top:16px">
+      <div class="drawer-row"><div class="drawer-field"><label data-i18n="settings.college">College</label><select id="college"><option>APM</option><option>APS</option><option>ST</option></select></div><div class="drawer-field"><label data-i18n="settings.semester">Current semester</label><select id="semesterLevel"></select></div></div>
+      <div class="drawer-row"><div class="drawer-field"><label data-i18n="settings.track">Admission language / Track</label><select id="track"><option value="E">English Basis</option><option value="JST">Japanese Basis · English Standard</option><option value="JAT">Japanese Basis · English Advanced</option></select></div><div class="drawer-field"><label data-i18n="settings.targetCredits">Target credits</label><input id="targetCredits" type="number" min="0" step="1" value="18"></div></div>
+      <div class="drawer-field"><label id="languageLevelLabel" data-i18n="settings.completedLanguage">Opposite language · highest completed level</label><select id="languageLevel"></select><div class="drawer-help" id="languageLevelHelp" data-i18n="settings.languageHelp">Core language courses are filtered using your admission basis and completed level.</div></div>
+      <label class="check-line"><input id="accelerated" type="checkbox"> <span data-i18n="settings.accelerated">Accelerated Graduation</span></label>
+    </section>
+    <div class="drawer-actions">
+      <button class="add" id="profileApplyButton" data-i18n="profile.apply">Apply</button>
+      <button id="profileCancelButton" data-i18n="profile.cancel">Cancel</button>
+    </div>
   </div>
 </aside>
 

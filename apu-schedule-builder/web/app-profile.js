@@ -30,7 +30,7 @@ unavailableReason=function(section){return semesterUnavailableReason(section)||l
 
 save=function(){
   syncActivePreset();
-  localStorage.setItem(prefsKey(),JSON.stringify({college:college(),semesterLevel:$('semesterLevel').value,track:$('track').value,languageLevel:$('languageLevel').value,accelerated:$('accelerated').checked,targetCredits:$('targetCredits').value,activePreset:state.activePreset,presets:state.presets,selectedCodes:state.selectedCodes,universityCodes:state.universityCodes,blockedSlots:[...state.blockedSlots],quarter:state.quarter}));
+  localStorage.setItem(prefsKey(),JSON.stringify({profileConfirmed:!!state.profileConfirmed,college:college(),semesterLevel:$('semesterLevel').value,track:$('track').value,languageLevel:$('languageLevel').value,accelerated:$('accelerated').checked,targetCredits:$('targetCredits').value,activePreset:state.activePreset,presets:state.presets,selectedCodes:state.selectedCodes,universityCodes:state.universityCodes,blockedSlots:[...state.blockedSlots],quarter:state.quarter}));
 };
 loadPrefs=function(){
   try{
@@ -38,9 +38,10 @@ loadPrefs=function(){
     if(p.college)$('college').value=p.college;if(p.semesterLevel)$('semesterLevel').value=p.semesterLevel;if(p.track)$('track').value=p.track;
     updateLanguageLevelOptions(p.languageLevel||0);
     if(p.accelerated!==undefined)$('accelerated').checked=!!p.accelerated;if(p.targetCredits)$('targetCredits').value=p.targetCredits;
-    state.activePreset=PRESET_IDS.includes(p.activePreset)?p.activePreset:'A';state.presets=normalizePresetMap(p.presets,p.selectedCodes);state.selectedCodes=[...state.presets[state.activePreset]];
+    // Saves written before this flow existed have no profileConfirmed field at all; those students already chose a college, so treat them as set up. Newer saves always carry the flag, so an unfinished setup stays unfinished.
+    state.profileConfirmed=p.profileConfirmed===undefined?!!p.college:p.profileConfirmed===true;state.activePreset=PRESET_IDS.includes(p.activePreset)?p.activePreset:'A';state.presets=normalizePresetMap(p.presets,p.selectedCodes);state.selectedCodes=[...state.presets[state.activePreset]];
     state.universityCodes=Array.isArray(p.universityCodes)?p.universityCodes.map(String):(Array.isArray(p.fixedCodes)?p.fixedCodes.map(String):[]);state.blockedSlots=new Set(Array.isArray(p.blockedSlots)?p.blockedSlots:[]);state.quarter=p.quarter||p.availabilityQuarter||'Q1';
-  }catch{resetAllPresets();updateLanguageLevelOptions(0)}
+  }catch{state.profileConfirmed=false;resetAllPresets();updateLanguageLevelOptions(0)}
 };
 
 addUniversity=function(raw){
@@ -79,4 +80,70 @@ aplusLink=function(s,detail=false){
 };
 
 $('track').addEventListener('change',()=>updateLanguageLevelOptions(0));
-$('languageLevel').addEventListener('change',()=>{state.previewCodes=[];revalidateSemesterSelection();save();$('eligibilityText').textContent=eligibilitySummary();renderAll();});
+$('languageLevel').addEventListener('change',()=>{if(state.profileEditing)return;state.previewCodes=[];revalidateSemesterSelection();save();$('eligibilityText').textContent=eligibilitySummary();renderAll();});
+
+
+/* ── profile: chosen once, then fixed until explicitly edited ─────────────
+ * College and semester decide which classes are even offered, so they are
+ * shown as a locked summary. Editing opens the form; nothing takes effect
+ * until Apply, which is the only place a college switch reloads the data. */
+
+const PROFILE_FIELDS=['college','semesterLevel','track','languageLevel','accelerated','targetCredits'];
+
+function profileValues(){
+  const out={};
+  for(const id of PROFILE_FIELDS)out[id]=$(id).type==='checkbox'?$(id).checked:$(id).value;
+  return out;
+}
+function restoreProfileValues(v){
+  if(!v)return;
+  $('college').value=v.college;$('semesterLevel').value=v.semesterLevel;$('track').value=v.track;
+  updateLanguageLevelOptions(v.languageLevel||0);$('languageLevel').value=v.languageLevel;
+  $('accelerated').checked=!!v.accelerated;$('targetCredits').value=v.targetCredits;
+}
+function trackLabel(){const o=$('track').selectedOptions[0];return o?o.textContent:$('track').value}
+function languageLevelLabel(){const o=$('languageLevel').selectedOptions[0];return o?o.textContent:''}
+
+function renderProfileSummary(){
+  const box=$('profileSummary');if(!box)return;
+  if(!state.profileConfirmed){box.innerHTML=`<div class="empty-inline">${esc(tr('profile.none'))}</div>`;return}
+  const rows=[
+    [tr('settings.college'),college()],
+    [tr('settings.semester'),tr('profile.semesterValue',{semester:$('semesterLevel').value})],
+    [tr('settings.track'),trackLabel()],
+    [tr('settings.completedLanguage'),languageLevelLabel()],
+    [tr('settings.targetCredits'),$('targetCredits').value],
+    [tr('settings.accelerated'),$('accelerated').checked?tr('profile.on'):tr('profile.off')],
+  ];
+  box.innerHTML=rows.map(([k,v])=>`<div class="profile-row"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('');
+}
+
+function openProfile(setup=false){
+  state.profileEditing=true;
+  state.profileSetup=!!setup;
+  state.profileSnapshot=profileValues();
+  $('profileDrawerTitle').textContent=setup?tr('profile.setupTitle'):tr('profile.title');
+  $('profileIntro').textContent=setup?tr('profile.setupIntro'):tr('profile.editIntro');
+  $('profileApplyButton').textContent=setup?tr('profile.start'):tr('profile.apply');
+  $('profileCancelButton').classList.toggle('hidden',setup);
+  openDrawer('profileDrawer');
+}
+function cancelProfile(){
+  restoreProfileValues(state.profileSnapshot);
+  state.profileEditing=false;state.profileSetup=false;
+  closeDrawers();
+}
+async function applyProfile(){
+  const before=state.profileSnapshot||{};
+  // Also true during first-time setup: picking a college there must load its data.
+  const collegeChanged=!!before.college&&before.college!==college();
+  state.profileEditing=false;state.profileSetup=false;
+  state.profileConfirmed=true;
+  clampTarget();state.previewCodes=[];
+  closeDrawers();
+  if(collegeChanged){await switchCollege();}
+  else{revalidateSemesterSelection();save();renderAll();}
+  $('eligibilityText').textContent=eligibilitySummary();
+  renderProfileSummary();renderTop();
+  toast(tr('profile.applied'));
+}
