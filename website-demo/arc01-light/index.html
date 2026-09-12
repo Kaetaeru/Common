@@ -1,0 +1,1221 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="VELLUM ARC 01 — 사진 없이 캔버스로 빛을 실시간 계산하는 제품 사이트 데모. 조광 10–100%에 따라 방과 인터페이스가 함께 반응합니다.">
+<meta name="theme-color" content="#0b0a09">
+<title>ARC 01 Light Room</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Hahmlet:wght@300;500;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@300;400;500&display=swap');
+
+:root {
+  color-scheme: dark;
+  --lit: 0.62;
+  --void: #0b0a09;
+  --room: #14120f;
+  --surface: #191613;
+  --hair: #2b2723;
+  --hair-soft: #211e1a;
+  --text: #ece5da;
+  --muted: #948a7c;
+  --faint: #6b6359;
+  --amber: #ffad66;
+  --amber-deep: #c8752c;
+  --silver: #c3bcb1;
+  --graphite: #4a4742;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --sans: "IBM Plex Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+  --serif: "Hahmlet", "IBM Plex Sans KR", Georgia, serif;
+  --gut: clamp(20px, 4vw, 56px);
+  --max: 1280px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--sans);
+  font-weight: 300;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+
+.label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  color: color-mix(in oklab, var(--faint), var(--amber) calc(var(--lit) * 38%));
+}
+
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- masthead ---------- */
+
+.mast {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 22px var(--gut) 18px;
+}
+
+.wordmark {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.42em;
+  color: var(--text);
+  text-shadow: 0 0 calc(var(--lit) * 26px) rgba(255, 173, 102, calc(var(--lit) * 0.35));
+}
+
+.mast nav {
+  display: flex;
+  gap: clamp(14px, 2.4vw, 30px);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.mast nav a:hover { color: var(--amber); }
+.mast nav .cart { color: var(--faint); }
+
+/* ---------- act: the room ---------- */
+
+.act { position: relative; height: 300vh; }
+
+.stage {
+  position: sticky;
+  top: 0;
+  height: min(100svh, 860px);
+  overflow: hidden;
+  background: var(--room);
+  border-block: 1px solid var(--hair-soft);
+}
+
+#room {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg, rgba(9, 8, 7, 0.9) 0%, rgba(9, 8, 7, 0.62) 34%, rgba(9, 8, 7, 0) 62%);
+}
+
+.stage-grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  padding-top: 76px;
+  height: 100%;
+  width: 100%;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 var(--gut);
+}
+
+.copy {
+  align-self: center;
+  max-width: 30rem;
+  padding-block: 24px;
+}
+
+.copy .meta {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.copy .model {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  color: var(--text);
+}
+
+h1 {
+  margin: 0 0 18px;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(2rem, 5.4vw, 3.9rem);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+  text-shadow: 0 0 calc(var(--lit) * 60px) rgba(255, 173, 102, calc(var(--lit) * 0.28));
+}
+
+h1 em {
+  font-style: normal;
+  font-weight: 300;
+  color: #d6cdc0;
+  color: color-mix(in oklab, #d6cdc0, var(--amber) calc(var(--lit) * 46%));
+}
+
+.copy p.desc {
+  margin: 0 0 26px;
+  max-width: 30ch;
+  font-size: clamp(13.5px, 1.1vw, 15px);
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+}
+
+.price {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 20px 11px 18px;
+  border: 1px solid var(--hair);
+  border-color: color-mix(in oklab, var(--hair), var(--amber) calc(var(--lit) * 50%));
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+.cta:hover { background: rgba(255, 173, 102, 0.08); border-color: var(--amber); color: var(--amber); }
+.cta .arrow { transition: transform 0.25s ease; }
+.cta:hover .arrow { transform: translateX(3px); }
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 4px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.switch:hover { color: var(--text); }
+.switch .rail {
+  position: relative;
+  width: 36px;
+  height: 13px;
+  border: 1px solid var(--hair);
+  background: #100e0c;
+}
+
+.switch .knob {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 15px;
+  height: 9px;
+  background: #4b463f;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.switch[aria-checked="true"] .knob {
+  transform: translateX(17px);
+  background: var(--amber);
+  box-shadow: 0 0 12px rgba(255, 173, 102, 0.8);
+}
+
+/* ---------- console ---------- */
+
+.console {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 10px 34px;
+  padding: 16px 0 20px;
+  border-top: 1px solid var(--hair-soft);
+  border-top-color: color-mix(in oklab, var(--hair-soft), var(--amber) calc(var(--lit) * 26%));
+}
+
+.dimmer .row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.dimmer .val {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--amber);
+  color: color-mix(in oklab, #7d766c, var(--amber) calc(var(--lit) * 100%));
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  background: none;
+  cursor: ew-resize;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 2px;
+  background: linear-gradient(to right, var(--amber-deep), rgba(255, 173, 102, 0.14));
+}
+
+input[type="range"]::-moz-range-track {
+  height: 2px;
+  background: linear-gradient(to right, var(--amber-deep), rgba(255, 173, 102, 0.14));
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 1px #0b0a09, 0 0 18px rgba(255, 173, 102, 0.75);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 1px #0b0a09, 0 0 18px rgba(255, 173, 102, 0.75);
+}
+
+.readout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 18px;
+}
+
+.readout div { min-width: 0; }
+.readout dt { margin: 0 0 5px; }
+
+.readout dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(13px, 1.2vw, 15px);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.readout dd small { font-size: 0.72em; color: var(--faint); margin-left: 2px; }
+
+.caption {
+  grid-column: 1 / -1;
+  pointer-events: none;
+}
+
+.tick-notes {
+  position: relative;
+  height: 18px;
+  margin-bottom: 2px;
+}
+
+.tick-notes span {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  white-space: nowrap;
+}
+
+.tick-notes span.on { opacity: 1; }
+
+/* ---------- drawing ---------- */
+
+.sheet {
+  width: 100%;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: clamp(56px, 9vw, 120px) var(--gut);
+}
+
+.sheet-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--hair);
+  margin-bottom: clamp(28px, 5vw, 52px);
+}
+
+h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(1.35rem, 2.6vw, 2rem);
+  letter-spacing: -0.02em;
+}
+
+.tech {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+  gap: clamp(32px, 6vw, 72px);
+  align-items: start;
+}
+
+.elevation {
+  width: 100%;
+  height: auto;
+  max-width: 300px;
+  overflow: visible;
+}
+
+.elevation .dim { stroke: var(--hair); stroke-width: 1; }
+.elevation .dimtext {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  fill: var(--faint);
+}
+
+.spec { border-top: 1px solid var(--hair); }
+
+.spec div {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.4fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 13px 2px;
+  border-bottom: 1px solid var(--hair-soft);
+}
+
+.spec dt { margin: 0; align-self: center; }
+
+.spec dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.finish {
+  display: flex;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.finish button {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 14px;
+  border: 1px solid var(--hair);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.finish button i {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  display: block;
+}
+
+.finish button[data-finish="silver"] i { background: linear-gradient(150deg, #e4ded4, #9b948a); }
+.finish button[data-finish="graphite"] i { background: linear-gradient(150deg, #605c56, #26241f); }
+.finish button[aria-pressed="true"] { color: var(--text); border-color: color-mix(in oklab, var(--hair), var(--amber) 60%); }
+
+/* ---------- close ---------- */
+
+.close {
+  border-top: 1px solid var(--hair-soft);
+  background: linear-gradient(180deg, #0f0d0b, var(--void));
+}
+
+.close-in {
+  width: 100%;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: clamp(56px, 9vw, 110px) var(--gut);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 32px;
+}
+
+.close h2 { max-width: 22ch; }
+.close .price-big {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.3rem, 3vw, 2.1rem);
+  letter-spacing: -0.01em;
+  margin-top: 20px;
+}
+
+footer {
+  width: 100%;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 26px var(--gut) 56px;
+  border-top: 1px solid var(--hair-soft);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+footer p { margin: 0; max-width: 62ch; }
+
+/* ---------- narrow ---------- */
+
+@media (max-width: 860px) {
+  .tech { grid-template-columns: 1fr; }
+  .elevation { max-width: 210px; }
+  .close-in { grid-template-columns: 1fr; align-items: start; }
+}
+
+@media (max-width: 720px) {
+  .scrim {
+    background: linear-gradient(to top, rgba(9, 8, 7, 0.95) 0%, rgba(9, 8, 7, 0.78) 38%, rgba(9, 8, 7, 0.1) 72%, rgba(9, 8, 7, 0) 100%);
+  }
+  .stage-grid { grid-template-rows: 1fr auto auto; }
+  .copy { align-self: end; padding-block: 0 18px; max-width: none; }
+  .copy .meta { margin-bottom: 14px; }
+  h1 { font-size: clamp(1.75rem, 8vw, 2.5rem); margin-bottom: 12px; }
+  .copy p.desc { margin-bottom: 18px; max-width: 34ch; }
+  .console { grid-template-columns: 1fr; gap: 14px; padding: 12px 0 16px; }
+  .readout { gap: 4px 12px; }
+  .readout dd { font-size: 13px; }
+  .dimmer .row { margin-bottom: 4px; }
+  .tick-notes { height: 15px; }
+  .mast { padding-bottom: 12px; }
+  .stage-grid { padding-top: 62px; }
+  .mast nav { gap: 14px; font-size: 10px; }
+  .wordmark { font-size: 13px; letter-spacing: 0.34em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <a class="wordmark" href="#top">VELLUM</a>
+  <nav aria-label="주요 메뉴">
+    <a href="#tech">Objects</a>
+    <a href="#tech">Journal</a>
+    <a href="#close">About</a>
+    <span class="cart">Cart 0</span>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="act" id="act" aria-label="ARC 01 조명 데모">
+    <div class="stage">
+      <canvas id="room" aria-label="ARC 01 플로어 램프가 놓인 실내. 조광 값에 따라 벽과 바닥의 빛이 실시간으로 바뀝니다."></canvas>
+      <div class="scrim"></div>
+
+      <div class="stage-grid">
+        <div class="copy">
+          <div class="meta">
+            <span class="label">Objects / Lighting</span>
+            <span class="model">ARC 01</span>
+          </div>
+          <h1>빛을 낮게,<br><em>공간을 깊게.</em></h1>
+          <p class="desc">ARC 01은 얇은 알루미늄 아치와 부드러운 간접광을 결합한 플로어 램프입니다. 눈부심을 줄이고, 필요한 곳에만 따뜻한 빛을 남깁니다.</p>
+          <div class="actions">
+            <span class="price">₩348,000</span>
+            <a class="cta" href="#tech">제품 보기 <span class="arrow" aria-hidden="true">→</span></a>
+            <button class="switch" id="lamp" role="switch" aria-checked="true">
+              <span class="rail"><span class="knob"></span></span>
+              <span>빛 켜보기</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="console">
+          <div class="caption">
+            <div class="tick-notes" aria-hidden="true">
+              <span data-note="0" class="on">해가 아직 남아 있는 방</span>
+              <span data-note="1">해가 내려가는 중</span>
+              <span data-note="2">램프 하나만 남은 방</span>
+            </div>
+          </div>
+
+          <div class="dimmer">
+            <div class="row">
+              <label class="label" for="dim">조광 · Dimming 10–100%</label>
+              <span class="val num" id="dimVal">62%</span>
+            </div>
+            <input type="range" id="dim" min="10" max="100" step="1" value="62"
+                   aria-describedby="lux-out" aria-label="조광 밝기">
+          </div>
+
+          <dl class="readout">
+            <div>
+              <dt class="label">좌면 조도</dt>
+              <dd id="lux-out">98<small>lx</small></dd>
+            </div>
+            <div>
+              <dt class="label">소비전력</dt>
+              <dd id="watt-out">7.9<small>W</small></dd>
+            </div>
+            <div>
+              <dt class="label">색온도</dt>
+              <dd>2700<small>K</small></dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet" id="tech">
+    <div class="sheet-head">
+      <h2>도면 한 장으로 끝나는 제품</h2>
+      <span class="label">Elevation 1:20</span>
+    </div>
+
+    <div class="tech">
+      <svg class="elevation" viewBox="0 0 260 360" role="img"
+           aria-label="ARC 01 정면 도면. 전체 높이 1450mm, 아치 도달 거리 620mm, 베이스 지름 240mm.">
+        <g fill="none" stroke-linecap="round">
+          <!-- floor line -->
+          <path class="dim" d="M14 326 H246" />
+          <!-- lamp -->
+          <path id="elevArc" d="M196 322 V150 C196 76 168 52 104 52" stroke="var(--silver)" stroke-width="5" />
+          <path d="M104 52 H150" stroke="var(--amber)" stroke-width="2.5" opacity="0.9" />
+          <ellipse cx="196" cy="322" rx="34" ry="7" fill="#1c1a16" stroke="var(--silver)" stroke-width="2" />
+          <!-- height dimension -->
+          <path class="dim" d="M44 52 V322 M38 52 H50 M38 322 H50" />
+          <!-- reach dimension -->
+          <path class="dim" d="M104 34 H196 M104 28 V40 M196 28 V40" />
+          <!-- base dimension -->
+          <path class="dim" d="M162 344 H230 M162 338 V350 M230 338 V350" />
+          <!-- light cone -->
+          <path d="M120 58 L86 322 M140 58 L196 322" stroke="var(--amber)" stroke-width="0.75"
+                stroke-dasharray="2 5" opacity="0.5" />
+        </g>
+        <text class="dimtext" x="36" y="190" text-anchor="end" transform="rotate(-90 36 190)">1450 mm</text>
+        <text class="dimtext" x="150" y="22" text-anchor="middle">620 mm</text>
+        <text class="dimtext" x="196" y="360" text-anchor="middle">⌀ 240 mm</text>
+      </svg>
+
+      <dl class="spec">
+        <div><dt class="label">Material</dt><dd>Anodized aluminium</dd></div>
+        <div><dt class="label">Light</dt><dd>2700 K warm white</dd></div>
+        <div><dt class="label">Height</dt><dd>1450 mm</dd></div>
+        <div><dt class="label">Dimming</dt><dd>10 – 100 %</dd></div>
+        <div><dt class="label">Colors</dt><dd>Warm Silver / Graphite</dd></div>
+        <div><dt class="label">Power</dt><dd>12 W LED</dd></div>
+        <div><dt class="label">Beam</dt><dd id="beam-out">1.9 m 지점 98 lx</dd></div>
+
+        <div class="finish" role="group" aria-label="마감 선택">
+          <button type="button" data-finish="silver" aria-pressed="true"><i></i>Warm Silver</button>
+          <button type="button" data-finish="graphite" aria-pressed="false"><i></i>Graphite</button>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="close" id="close">
+    <div class="close-in">
+      <div>
+        <span class="label">Objects / Lighting</span>
+        <h2 style="margin-top:14px">한 방향으로만 필요한 빛</h2>
+        <div class="price-big">₩348,000</div>
+      </div>
+      <a class="cta" href="#top">제품 보기 <span class="arrow" aria-hidden="true">→</span></a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>이 방에는 사진이 한 장도 없습니다. 벽, 바닥, 그림자, 2700K 광원은 모두 조광 값에 따라 캔버스에서 매 프레임 계산됩니다. 조도 값은 광속 920 lm과 역제곱 법칙으로 좌면 1.9 m 기준을 계산한 값입니다.</p>
+  <p>VELLUM과 ARC 01은 프레젠테이션용 가상 브랜드·제품입니다. 실제로 판매되지 않습니다.</p>
+</footer>
+
+<script>
+(() => {
+  "use strict";
+
+  const cv = document.getElementById("room");
+  const ctx = cv.getContext("2d");
+  const lightCv = document.createElement("canvas");
+  const lctx = lightCv.getContext("2d");
+  const root = document.documentElement;
+
+  const dimEl = document.getElementById("dim");
+  const dimVal = document.getElementById("dimVal");
+  const luxOut = document.getElementById("lux-out");
+  const wattOut = document.getElementById("watt-out");
+  const beamOut = document.getElementById("beam-out");
+  const lampBtn = document.getElementById("lamp");
+  const notes = [...document.querySelectorAll(".tick-notes span")];
+  const elevArc = document.getElementById("elevArc");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const state = {
+    on: true,
+    dim: 0.62,
+    intensity: 0.62,
+    ambient: 0.6,
+    finish: "silver"
+  };
+
+  let W = 0, H = 0, dpr = 1, grain = null, needsDraw = true, running = false;
+
+  /* ---------- geometry ---------- */
+
+  function geom() {
+    const portrait = H / W > 0.9;
+    const g = {
+      hy: H * (portrait ? 0.50 : 0.60),
+      bx: W * (portrait ? 0.74 : 0.775),
+      by: H * (portrait ? 0.80 : 0.925),
+      tipX: W * (portrait ? 0.30 : 0.45),
+      tipY: H * (portrait ? 0.16 : 0.20),
+      stroke: Math.max(4, W * (portrait ? 0.016 : 0.0115)),
+      portrait
+    };
+    g.stripLen = (g.bx - g.tipX) * 0.22;
+    g.lx = g.tipX + g.stripLen * 0.45;
+    g.ly = g.tipY + g.stroke * 0.6;
+    return g;
+  }
+
+  function lampPath(g) {
+    const p = new Path2D();
+    p.moveTo(g.bx, g.by - g.stroke * 0.4);
+    p.lineTo(g.bx, g.tipY + (g.by - g.tipY) * 0.42);
+    p.bezierCurveTo(
+      g.bx, g.tipY + (g.by - g.tipY) * 0.05,
+      g.bx - (g.bx - g.tipX) * 0.52, g.tipY,
+      g.tipX, g.tipY
+    );
+    return p;
+  }
+
+  function chairPts(g) {
+    const f = (x, y) => [W * x, g.hy + (H - g.hy) * y];
+    return [f(0.035, 0.55), f(0.10, -0.18), f(0.215, 0.18), f(0.30, 0.42), f(0.235, 0.86), f(0.06, 0.92)];
+  }
+
+  function tablePts(g) {
+    const cx = W * 0.40, cy = g.hy + (H - g.hy) * 0.44, rx = W * 0.052, ry = W * 0.014;
+    return { cx, cy, rx, ry, legY: g.hy + (H - g.hy) * 0.93 };
+  }
+
+  /* ---------- passes ---------- */
+
+  function paintRoom(g, amb) {
+    // back wall
+    const wall = ctx.createLinearGradient(0, 0, 0, g.hy);
+    wall.addColorStop(0, mix(0x1a1713, 0x484d57, amb * 0.85));
+    wall.addColorStop(1, mix(0x15120f, 0x363b44, amb * 0.8));
+    ctx.fillStyle = wall;
+    ctx.fillRect(0, 0, W, g.hy);
+
+    // floor
+    const floor = ctx.createLinearGradient(0, g.hy, 0, H);
+    floor.addColorStop(0, mix(0x100e0b, 0x2f2d28, amb * 0.8));
+    floor.addColorStop(1, mix(0x0b0a08, 0x201e18, amb * 0.7));
+    ctx.fillStyle = floor;
+    ctx.fillRect(0, g.hy, W, H - g.hy);
+
+    // plank perspective
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, g.hy, W, H - g.hy);
+    ctx.clip();
+    ctx.strokeStyle = "rgba(255,238,214," + (0.03 + amb * 0.025) + ")";
+    ctx.lineWidth = 1;
+    const vpX = W * 0.62;
+    for (let i = -7; i <= 9; i++) {
+      const x0 = vpX + i * (W * 0.045);
+      ctx.beginPath();
+      ctx.moveTo(vpX + (x0 - vpX) * 0.05, g.hy);
+      ctx.lineTo(vpX + (x0 - vpX) * 3.6, H);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // wall / floor junction shadow
+    const seam = ctx.createLinearGradient(0, g.hy - H * 0.05, 0, g.hy + H * 0.07);
+    seam.addColorStop(0, "rgba(0,0,0,0)");
+    seam.addColorStop(0.5, "rgba(0,0,0,0.55)");
+    seam.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = seam;
+    ctx.fillRect(0, g.hy - H * 0.05, W, H * 0.12);
+
+    // daylight from the left, cool
+    if (amb > 0.01) {
+      const day = ctx.createLinearGradient(0, 0, W * 0.85, H * 0.9);
+      day.addColorStop(0, "rgba(154,182,210," + amb * 0.3 + ")");
+      day.addColorStop(0.55, "rgba(154,182,210," + amb * 0.08 + ")");
+      day.addColorStop(1, "rgba(150,178,205,0)");
+      ctx.fillStyle = day;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  function chairPath(g) {
+    const pts = chairPts(g);
+    const p = new Path2D();
+    p.moveTo(pts[0][0], pts[0][1]);
+    p.bezierCurveTo(pts[0][0] - W * 0.02, pts[1][1] + H * 0.08, pts[1][0] - W * 0.03, pts[1][1], pts[1][0], pts[1][1]);
+    p.bezierCurveTo(pts[1][0] + W * 0.08, pts[1][1] - H * 0.01, pts[2][0] + W * 0.02, pts[2][1] - H * 0.05, pts[2][0], pts[2][1]);
+    p.lineTo(pts[3][0], pts[3][1]);
+    p.bezierCurveTo(pts[3][0] + W * 0.015, pts[3][1] + H * 0.07, pts[4][0] + W * 0.03, pts[4][1], pts[4][0], pts[4][1]);
+    p.lineTo(pts[5][0], pts[5][1]);
+    p.closePath();
+    return p;
+  }
+
+  function paintFurniture(g, amb) {
+    const t = tablePts(g);
+    const body = mix(0x1b1712, 0x3a3a36, amb * 0.75);
+    const pts = chairPts(g);
+
+    ctx.fillStyle = body;
+    ctx.fill(chairPath(g));
+
+    // chair legs
+    ctx.strokeStyle = mix(0x100d0a, 0x1f1f1c, amb * 0.4);
+    ctx.lineWidth = Math.max(2, W * 0.004);
+    ctx.beginPath();
+    ctx.moveTo(pts[5][0] + W * 0.02, pts[5][1] - H * 0.005);
+    ctx.lineTo(pts[5][0] + W * 0.012, H * 0.99);
+    ctx.moveTo(pts[4][0] - W * 0.01, pts[4][1]);
+    ctx.lineTo(pts[4][0] + W * 0.01, H * 0.985);
+    ctx.stroke();
+
+    // side table
+    ctx.beginPath();
+    ctx.ellipse(t.cx, t.cy, t.rx, t.ry, 0, 0, Math.PI * 2);
+    ctx.fillStyle = mix(0x1f1a14, 0x3d3a33, amb * 0.75);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(t.cx, t.cy);
+    ctx.lineTo(t.cx, t.legY);
+    ctx.lineWidth = Math.max(2, W * 0.0045);
+    ctx.strokeStyle = mix(0x130f0b, 0x232220, amb * 0.4);
+    ctx.stroke();
+  }
+
+  function buildLight(g, k) {
+    lctx.setTransform(1, 0, 0, 1, 0, 0);
+    lctx.clearRect(0, 0, lightCv.width, lightCv.height);
+    lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (k <= 0.001) return;
+    lctx.globalCompositeOperation = "lighter";
+
+    // wall wash above the horizon
+    lctx.save();
+    lctx.beginPath();
+    lctx.rect(0, 0, W, g.hy);
+    lctx.clip();
+    const r = W * 0.72;
+    const wash = lctx.createRadialGradient(g.lx, g.ly, 0, g.lx, g.ly, r);
+    wash.addColorStop(0, rgba(k * 0.95));
+    wash.addColorStop(0.14, rgba(k * 0.62));
+    wash.addColorStop(0.36, rgba(k * 0.27));
+    wash.addColorStop(0.66, rgba(k * 0.08));
+    wash.addColorStop(1, rgba(0));
+    lctx.fillStyle = wash;
+    lctx.fillRect(0, 0, W, g.hy);
+    lctx.restore();
+
+    // pool on the floor, foreshortened
+    lctx.save();
+    lctx.beginPath();
+    lctx.rect(0, g.hy, W, H - g.hy);
+    lctx.clip();
+    const py = g.hy + (H - g.hy) * 0.52;
+    lctx.translate(g.lx, py);
+    lctx.scale(1, 0.42);
+    const pool = lctx.createRadialGradient(0, 0, 0, 0, 0, W * 0.55);
+    pool.addColorStop(0, rgba(k * 0.8));
+    pool.addColorStop(0.28, rgba(k * 0.4));
+    pool.addColorStop(0.62, rgba(k * 0.13));
+    pool.addColorStop(1, rgba(0));
+    lctx.fillStyle = pool;
+    lctx.fillRect(-W, -H, W * 2, H * 2);
+    lctx.restore();
+
+    // occlusion: carve cast shadows out of the light map
+    const soft = Math.max(6, W * 0.012);
+    carve(g, chairPts(g), 2.25, soft, k);
+    const t = tablePts(g);
+    const ring = [];
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      ring.push([t.cx + Math.cos(a) * t.rx, t.cy + Math.sin(a) * t.ry]);
+    }
+    carve(g, ring, 1.9, soft * 0.7, k);
+  }
+
+  function carve(g, pts, scale, soft, k) {
+    const L = { x: g.lx, y: g.ly };
+    const proj = pts.map(([x, y]) => [L.x + (x - L.x) * scale, L.y + (y - L.y) * scale]);
+    lctx.save();
+    lctx.globalCompositeOperation = "destination-out";
+    if ("filter" in lctx) lctx.filter = "blur(" + soft.toFixed(1) + "px)";
+    lctx.beginPath();
+    lctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) lctx.lineTo(pts[i][0], pts[i][1]);
+    for (let i = proj.length - 1; i >= 0; i--) lctx.lineTo(proj[i][0], proj[i][1]);
+    lctx.closePath();
+    const a = mid(pts), b = mid(proj);
+    const grad = lctx.createLinearGradient(a[0], a[1], b[0], b[1]);
+    grad.addColorStop(0, "rgba(0,0,0," + (0.9 * Math.min(1, 0.35 + k)) + ")");
+    grad.addColorStop(0.5, "rgba(0,0,0," + (0.45 * Math.min(1, 0.35 + k)) + ")");
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    lctx.fillStyle = grad;
+    lctx.fill();
+    lctx.restore();
+  }
+
+  // edges facing the lamp catch the warm light
+  function paintRim(g, k) {
+    if (k <= 0.01) return;
+    const t = tablePts(g);
+    const rim = ctx.createLinearGradient(W * 0.34, 0, W * 0.02, 0);
+    rim.addColorStop(0, "rgba(255,186,124," + (0.62 * k) + ")");
+    rim.addColorStop(0.55, "rgba(255,176,110," + (0.22 * k) + ")");
+    rim.addColorStop(1, "rgba(255,173,102,0)");
+    ctx.save();
+    ctx.lineWidth = Math.max(1.4, W * 0.0026);
+    ctx.strokeStyle = rim;
+    ctx.stroke(chairPath(g));
+    ctx.beginPath();
+    ctx.ellipse(t.cx, t.cy, t.rx, t.ry, 0, Math.PI * 1.06, Math.PI * 2.02);
+    ctx.strokeStyle = "rgba(255,190,132," + (0.75 * k) + ")";
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function paintLamp(g, k) {
+    const path = lampPath(g);
+    const silver = state.finish === "silver";
+
+    // base plate
+    ctx.beginPath();
+    ctx.ellipse(g.bx, g.by, g.stroke * 2.9, g.stroke * 0.78, 0, 0, Math.PI * 2);
+    const bg = ctx.createLinearGradient(g.bx - g.stroke * 3, g.by, g.bx + g.stroke * 3, g.by);
+    bg.addColorStop(0, silver ? "#736c62" : "#2b2925");
+    bg.addColorStop(0.45, silver ? "#cbc4b8" : "#4e4a44");
+    bg.addColorStop(1, silver ? "#4e4840" : "#1d1b18");
+    ctx.fillStyle = bg;
+    ctx.fill();
+
+    // arc body
+    const ag = ctx.createLinearGradient(g.tipX, g.tipY, g.bx + g.stroke, g.by);
+    ag.addColorStop(0, silver ? "#8f887d" : "#33302c");
+    ag.addColorStop(0.35, silver ? "#ded7cb" : "#565249");
+    ag.addColorStop(0.72, silver ? "#9d968a" : "#312e2a");
+    ag.addColorStop(1, silver ? "#6a6459" : "#23211d");
+    ctx.lineWidth = g.stroke;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = ag;
+    ctx.stroke(path);
+
+    // specular edge
+    ctx.save();
+    ctx.lineWidth = Math.max(1, g.stroke * 0.16);
+    ctx.strokeStyle = "rgba(255,247,235," + (silver ? 0.4 : 0.22) + ")";
+    ctx.translate(-g.stroke * 0.28, -g.stroke * 0.1);
+    ctx.stroke(path);
+    ctx.restore();
+
+    // warm bounce on the underside of the arc
+    if (k > 0.01) {
+      ctx.save();
+      ctx.lineWidth = Math.max(1, g.stroke * 0.3);
+      ctx.strokeStyle = "rgba(255,173,102," + (0.5 * k) + ")";
+      ctx.translate(0, g.stroke * 0.34);
+      ctx.stroke(path);
+      ctx.restore();
+    }
+
+    // light strip on the underside of the tip
+    const sy = g.tipY + g.stroke * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(g.tipX, sy);
+    ctx.lineTo(g.tipX + g.stripLen, sy);
+    ctx.lineCap = "round";
+    ctx.lineWidth = Math.max(2, g.stroke * 0.32);
+    ctx.strokeStyle = "rgb(" + [255, 210 + 30 * k, 160 + 60 * k].map(Math.round).join(",") + ")";
+    ctx.globalAlpha = 0.25 + 0.75 * k;
+    ctx.shadowColor = "rgba(255,173,102,0.95)";
+    ctx.shadowBlur = 6 + 34 * k;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+
+    // bloom
+    if (k > 0.01) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const bl = ctx.createRadialGradient(g.lx, g.ly, 0, g.lx, g.ly, W * (0.06 + 0.1 * k));
+      bl.addColorStop(0, "rgba(255,196,135," + 0.5 * k + ")");
+      bl.addColorStop(0.4, "rgba(255,173,102," + 0.16 * k + ")");
+      bl.addColorStop(1, "rgba(255,173,102,0)");
+      ctx.fillStyle = bl;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+  }
+
+  function paintAir(g, k) {
+    // vignette
+    const v = ctx.createRadialGradient(W * 0.5, H * 0.48, Math.min(W, H) * 0.28, W * 0.5, H * 0.5, Math.max(W, H) * 0.78);
+    v.addColorStop(0, "rgba(0,0,0,0)");
+    v.addColorStop(1, "rgba(0,0,0,0.62)");
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, W, H);
+
+    if (grain) {
+      ctx.save();
+      ctx.globalAlpha = 0.05;
+      ctx.globalCompositeOperation = "overlay";
+      ctx.fillStyle = grain;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+  }
+
+  function draw() {
+    const g = geom();
+    const k = state.intensity;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    paintRoom(g, state.ambient);
+    paintFurniture(g, state.ambient);
+
+    buildLight(g, k);
+    if (k > 0.001) {
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(lightCv, 0, 0);
+      ctx.restore();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    paintRim(g, k);
+    paintLamp(g, k);
+    paintAir(g, k);
+  }
+
+  /* ---------- helpers ---------- */
+
+  function rgba(a) { return "rgba(255,173,102," + Math.max(0, a).toFixed(4) + ")"; }
+  function mid(pts) {
+    let x = 0, y = 0;
+    for (const p of pts) { x += p[0]; y += p[1]; }
+    return [x / pts.length, y / pts.length];
+  }
+  function mix(a, b, t) {
+    t = Math.max(0, Math.min(1, t));
+    const c = (sh) => Math.round((((a >> sh) & 255) * (1 - t)) + (((b >> sh) & 255) * t));
+    return "rgb(" + c(16) + "," + c(8) + "," + c(0) + ")";
+  }
+
+  function makeGrain() {
+    const s = 128;
+    const n = document.createElement("canvas");
+    n.width = n.height = s;
+    const nc = n.getContext("2d");
+    const img = nc.createImageData(s, s);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = 110 + Math.random() * 46;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+      img.data[i + 3] = 255;
+    }
+    nc.putImageData(img, 0, 0);
+    grain = ctx.createPattern(n, "repeat");
+  }
+
+  function resize() {
+    const rect = cv.getBoundingClientRect();
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = Math.max(320, Math.round(rect.width));
+    H = Math.max(360, Math.round(rect.height));
+    cv.width = lightCv.width = Math.round(W * dpr);
+    cv.height = lightCv.height = Math.round(H * dpr);
+    lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    makeGrain();
+    needsDraw = true;
+    kick();
+  }
+
+  /* ---------- readouts ---------- */
+
+  const FLUX = 920;      // lm at 100%
+  const OMEGA = 1.6;     // sr, ~90 degree beam
+  const SEAT = 1.9;      // m from the light strip to the seat
+
+  function updateReadouts() {
+    const d = state.dim;
+    const pct = Math.round(d * 100);
+    dimVal.textContent = pct + "%";
+    const lux = state.on ? (FLUX * d / OMEGA) / (SEAT * SEAT) : 0;
+    const watt = state.on ? 1.2 + 10.8 * d : 0;
+    luxOut.innerHTML = Math.round(lux) + "<small>lx</small>";
+    wattOut.innerHTML = watt.toFixed(1) + "<small>W</small>";
+    beamOut.textContent = SEAT.toFixed(1) + " m 지점 " + Math.round(lux) + " lx";
+  }
+
+  function setLit(k) {
+    root.style.setProperty("--lit", k.toFixed(3));
+  }
+
+  /* ---------- loop ---------- */
+
+  function kick() {
+    if (running) return;
+    running = true;
+    requestAnimationFrame(tick);
+  }
+
+  function tick() {
+    const target = state.on ? state.dim : 0;
+    const delta = target - state.intensity;
+    if (Math.abs(delta) > 0.0015 && !reduce) {
+      state.intensity += delta * 0.16;
+      needsDraw = true;
+    } else if (delta !== 0) {
+      state.intensity = target;
+      needsDraw = true;
+    }
+    if (needsDraw) {
+      needsDraw = false;
+      setLit(state.intensity);
+      draw();
+      requestAnimationFrame(tick);
+    } else {
+      running = false;
+    }
+  }
+
+  /* ---------- input ---------- */
+
+  dimEl.addEventListener("input", () => {
+    state.dim = Number(dimEl.value) / 100;
+    if (!state.on) {
+      state.on = true;
+      lampBtn.setAttribute("aria-checked", "true");
+    }
+    updateReadouts();
+    needsDraw = true;
+    kick();
+  });
+
+  lampBtn.addEventListener("click", () => {
+    state.on = !state.on;
+    lampBtn.setAttribute("aria-checked", String(state.on));
+    updateReadouts();
+    needsDraw = true;
+    kick();
+  });
+
+  document.querySelectorAll(".finish button").forEach((b) => {
+    b.addEventListener("click", () => {
+      state.finish = b.dataset.finish;
+      document.querySelectorAll(".finish button").forEach((o) => {
+        o.setAttribute("aria-pressed", String(o === b));
+      });
+      if (elevArc) elevArc.setAttribute("stroke", state.finish === "silver" ? "var(--silver)" : "var(--graphite)");
+      needsDraw = true;
+      kick();
+    });
+  });
+
+  /* ---------- scroll drives the hour ---------- */
+
+  const act = document.getElementById("act");
+  let queued = false;
+
+  function onScroll() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      const r = act.getBoundingClientRect();
+      const span = r.height - window.innerHeight;
+      const p = span > 0 ? Math.max(0, Math.min(1, -r.top / span)) : 0;
+      const amb = 0.6 * Math.pow(1 - p, 1.8);
+      if (Math.abs(amb - state.ambient) > 0.0015) {
+        state.ambient = amb;
+        needsDraw = true;
+        kick();
+      }
+      const i = p < 0.33 ? 0 : p < 0.72 ? 1 : 2;
+      notes.forEach((n, idx) => n.classList.toggle("on", idx === i));
+    });
+  }
+
+  addEventListener("scroll", onScroll, { passive: true });
+  addEventListener("resize", resize);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { needsDraw = true; kick(); });
+
+  resize();
+  updateReadouts();
+  setLit(state.intensity);
+  onScroll();
+})();
+</script>
+</body>
+</html>
