@@ -43,6 +43,7 @@
     transition: border-color .15s ease, transform .15s ease;
   }
   a.card:hover, a.card:focus-visible { border-color: var(--accent); transform: translateY(-1px); }
+  a.card + a.card { margin-top: 12px; }
   a.card strong { display: block; font-size: 18px; margin-bottom: 4px; }
   a.card span { color: var(--muted); font-size: 14px; }
   .go { margin-top: 12px; color: var(--accent); font-weight: 600; font-size: 14px; }
@@ -52,11 +53,17 @@
 <body>
 <main>
   <h1>Common</h1>
-  <p class="sub">Ritsumeikan APU 관련 도구 모음</p>
+  <p class="sub">직접 만들어 쓰는 웹 도구 모음</p>
 
   <a class="card" href="apu-schedule-builder/">
     <strong>APU Schedule Builder</strong>
     <span>AY2026 Fall 시간표를 직접 짜고, 남은 학점을 자동으로 채웁니다. 설치 없이 브라우저에서 바로 동작합니다.</span>
+    <div class="go">열기 →</div>
+  </a>
+
+  <a class="card" href="workout-timer/">
+    <strong>운동 타이머</strong>
+    <span>인터벌·라운드·세트를 한 화면에서 돌리는 운동 타이머. 아이폰 홈 화면에 추가하면 앱처럼 쓰고, 오프라인에서도 동작합니다.</span>
     <div class="go">열기 →</div>
   </a>
 
