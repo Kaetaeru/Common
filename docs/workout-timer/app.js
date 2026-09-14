@@ -157,7 +157,8 @@
       if (remainMs > k * 1000 + 150) tone(end - k, 784, 0.1, 0.2);
     }
     const next = plan[run.idx + 1];
-    cue(end, next ? next.type : 'done');
+    if (next) cue(end, next.type);
+    else for (let i = 0; i < 3; i++) cue(end + i * 3.6, 'done'); // 놓치지 않게 세 번
   }
 
   function buzz(type) {
@@ -202,7 +203,18 @@
     reset: $('#btnReset'),
     presets: $('#presets'),
     summary: $('#planSummary'),
+    rowTimer: $('#controls-timer'),
+    rowDone: $('#controls-done'),
+    rowWorkout: $('#controls-workout'),
+    picker: $('#picker'),
+    pickerList: $('#pickerList'),
   };
+
+  function showRow(which) {
+    el.rowTimer.hidden = which !== 'timer';
+    el.rowDone.hidden = which !== 'done';
+    el.rowWorkout.hidden = which !== 'workout';
+  }
 
   const RING = 2 * Math.PI * 90;
 
@@ -233,6 +245,8 @@
   function begin() {
     refreshPlan();
     if (!plan.length) return;
+    workout.active = false;
+    closePicker();
     run.running = true;
     run.started = true;
     run.done = false;
@@ -290,6 +304,7 @@
     cancelScheduled();
     stopLoop();
     keepAwake(false);
+    workout.active = false;
     run.running = false;
     run.started = false;
     run.done = false;
@@ -311,6 +326,7 @@
   }
 
   function tick() {
+    if (workout.active) { renderWorkout(); return; }
     if (!run.running) return;
     const now = Date.now();
     let jumped = 0;
@@ -331,10 +347,13 @@
   function render() {
     const total = planTotal;
 
+    if (workout.active) { renderWorkout(); return; }
+
     if (!run.started) {
+      showRow('timer');
       el.stage.dataset.phase = 'idle';
       el.stage.classList.remove('is-paused');
-      el.app.classList.remove('is-running');
+      el.app.classList.remove('is-focus');
       el.phase.textContent = '준비 완료';
       el.clock.textContent = fmt(plan.length ? plan[0].dur : 0);
       el.counter.textContent = `${config.rounds}라운드 · ${config.sets}세트`;
@@ -347,16 +366,16 @@
     }
 
     if (run.done) {
+      showRow('done');
       el.stage.dataset.phase = 'done';
       el.stage.classList.remove('is-paused');
-      el.app.classList.remove('is-running');
+      el.app.classList.add('is-focus');
       el.phase.textContent = '완료';
       el.clock.textContent = fmt(total);
-      el.counter.textContent = `${config.rounds}라운드 × ${config.sets}세트 끝`;
+      el.counter.textContent = workout.sets ? `${workout.sets}세트 완료` : `${config.rounds}라운드 × ${config.sets}세트 끝`;
       el.ring.style.strokeDashoffset = 0;
       el.metaElapsed.textContent = `경과 ${fmt(total)}`;
-      el.metaLeft.textContent = '수고했어요';
-      el.start.textContent = '다시 시작';
+      el.metaLeft.textContent = '운동 시작을 누르세요';
       el.skip.disabled = true;
       return;
     }
@@ -366,15 +385,19 @@
     const leftSec = leftMs / 1000;
     const ratio = item.dur > 0 ? Math.min(1, Math.max(0, leftSec / item.dur)) : 0;
 
+    showRow('timer');
     el.stage.dataset.phase = item.type;
     el.stage.classList.toggle('is-paused', !run.running);
-    el.app.classList.toggle('is-running', run.running);
+    el.app.classList.toggle('is-focus', run.running);
     el.phase.textContent = PHASE[item.type].label + (run.running ? '' : ' (일시정지)');
     el.clock.textContent = fmt(Math.ceil(leftSec));
     el.ring.style.strokeDashoffset = RING * (1 - ratio);
 
-    const parts = [`라운드 ${item.round}/${config.rounds}`];
+    const parts = [];
+    if (config.rounds > 1) parts.push(`라운드 ${item.round}/${config.rounds}`);
     if (config.sets > 1) parts.push(`세트 ${item.set}/${config.sets}`);
+    if (workout.sets > 0) parts.push(`${workout.sets}세트 완료`);
+    if (!parts.length) parts.push(`총 ${fmt(total)}`);
     el.counter.textContent = parts.join(' · ');
 
     const remainAll = leftSec + tailDur[run.idx];
@@ -384,11 +407,119 @@
     el.skip.disabled = false;
   }
 
+  /* --------------------------------------------------------- 운동모드 */
+  // 타이머가 끝나면 '운동 시작'을 눌러 운동모드로 들어간다. 운동모드는 시간을
+  // 세면서 두 가지 끝내기를 준다.
+  //   운동모드 종료 → 다음 타이머(같은 휴식)를 바로 이어서 시작
+  //   세트 종료     → 타이머 선택창으로
+  const workout = { active: false, startedAt: 0, sets: 0 };
+
+  function enterWorkout() {
+    cancelScheduled();
+    stopLoop();
+    run.started = false;
+    run.running = false;
+    run.done = false;
+    workout.active = true;
+    workout.startedAt = Date.now();
+    const ac = audio();
+    if (ac) cue(ac.currentTime, 'work');
+    buzz('work');
+    keepAwake(options.awake);
+    startLoop();
+    renderWorkout();
+  }
+
+  function leaveWorkout() {
+    workout.sets += 1;
+    workout.active = false;
+    stopLoop();
+    keepAwake(false);
+  }
+
+  function nextTimer() {
+    if (!workout.active) return;
+    leaveWorkout();
+    begin();
+  }
+
+  function endSet() {
+    if (!workout.active) return;
+    leaveWorkout();
+    reset();
+    openPicker();
+  }
+
+  function renderWorkout() {
+    const sec = (Date.now() - workout.startedAt) / 1000;
+    showRow('workout');
+    el.app.classList.add('is-focus');
+    el.stage.dataset.phase = 'workout';
+    el.stage.classList.remove('is-paused');
+    el.phase.textContent = '운동 중';
+    el.clock.textContent = fmt(sec);
+    el.counter.textContent = `${workout.sets + 1}번째 세트`;
+    el.ring.style.strokeDashoffset = 0;
+    el.metaElapsed.textContent = workout.sets ? `완료 ${workout.sets}세트` : '세트 진행 중';
+    el.metaLeft.textContent = `다음 타이머 ${fmt(planTotal)}`;
+  }
+
+  /* ---------------------------------------------------- 타이머 선택창 */
+  const planLength = (c) => buildPlan(c).reduce((sum, step) => sum + step.dur, 0);
+
+  function openPicker() {
+    cancelScheduled();
+    renderPicker();
+    el.picker.hidden = false;
+    el.app.classList.add('is-picking');
+    window.scrollTo(0, 0);
+  }
+
+  function closePicker() {
+    el.picker.hidden = true;
+    el.app.classList.remove('is-picking');
+  }
+
+  function renderPicker() {
+    el.pickerList.innerHTML = '';
+    for (const item of BUILT_IN.concat(presets)) {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'pick';
+      const left = document.createElement('span');
+      const name = document.createElement('b');
+      name.textContent = item.name;
+      const detail = document.createElement('small');
+      detail.textContent = ' ' + describe(item.config);
+      left.append(name, detail);
+      const total = document.createElement('span');
+      total.className = 'total';
+      total.textContent = fmt(planLength(item.config));
+      row.append(left, total);
+      row.addEventListener('click', () => {
+        workout.sets = 0;            // 새 운동을 고른 것이므로 세트 수를 새로 센다
+        applyPreset(item.config);
+        closePicker();
+        begin();
+      });
+      el.pickerList.append(row);
+    }
+  }
+
   function toggleStart() {
-    if (run.done || !run.started) begin();
+    if (workout.active) return;
+    if (run.done) { enterWorkout(); return; }
+    if (!run.started) begin();
     else if (run.running) pause();
     else resume();
   }
+
+  $('#btnWorkout').addEventListener('click', enterWorkout);
+  $('#btnAgain').addEventListener('click', () => { cancelScheduled(); workout.sets = 0; begin(); });
+  $('#btnPick').addEventListener('click', () => { reset(); openPicker(); });
+  $('#btnNextTimer').addEventListener('click', nextTimer);
+  $('#btnEndSet').addEventListener('click', endSet);
+  $('#pickerClose').addEventListener('click', () => { closePicker(); render(); });
 
   el.start.addEventListener('click', toggleStart);
   $('#dial').addEventListener('click', toggleStart);
@@ -614,6 +745,11 @@
       if (ctx && ctx.state === 'suspended') ctx.resume();
       keepAwake(options.awake);
       tick();
+    }
+    if (workout.active) {
+      if (ctx && ctx.state === 'suspended') ctx.resume();
+      keepAwake(options.awake);
+      renderWorkout();
     }
     if (sw.running) swRender();
   });

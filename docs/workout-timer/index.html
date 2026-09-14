@@ -51,11 +51,31 @@
         </div>
       </div>
 
-      <div class="controls">
+      <div class="controls" id="controls-timer">
         <button class="btn ghost" id="btnReset" type="button">처음으로</button>
         <button class="btn primary" id="btnStart" type="button">시작</button>
         <button class="btn ghost" id="btnSkip" type="button">건너뛰기</button>
       </div>
+
+      <div class="controls" id="controls-done" hidden>
+        <button class="btn ghost" id="btnAgain" type="button">타이머 다시</button>
+        <button class="btn primary" id="btnWorkout" type="button">운동 시작</button>
+        <button class="btn ghost" id="btnPick" type="button">타이머 선택</button>
+      </div>
+
+      <div class="controls two" id="controls-workout" hidden>
+        <button class="btn ghost" id="btnEndSet" type="button">세트 종료</button>
+        <button class="btn primary" id="btnNextTimer" type="button">운동모드 종료</button>
+      </div>
+
+      <section class="picker" id="picker" hidden>
+        <div class="block-head">
+          <h2>다음 타이머</h2>
+          <span class="hint">누르면 바로 시작합니다</span>
+        </div>
+        <div class="picker-list" id="pickerList"></div>
+        <button class="btn ghost wide" id="pickerClose" type="button">직접 설정하기</button>
+      </section>
 
       <div class="setup" id="setup">
         <div class="block">
@@ -165,6 +185,14 @@
   </main>
 
   <footer class="foot">
+    <details>
+      <summary>운동모드 쓰는 법</summary>
+      <ol>
+        <li>타이머가 끝나 알람이 울리면 <b>운동 시작</b>을 눌러 운동모드로 들어갑니다. 운동한 시간이 올라가며 세트 수가 쌓입니다.</li>
+        <li><b>운동모드 종료</b> — 방금 세트를 마쳤다는 뜻. 같은 타이머가 바로 다시 시작합니다. 세트를 반복할 때 이 버튼만 누르면 됩니다.</li>
+        <li><b>세트 종료</b> — 이 운동을 끝냈다는 뜻. 타이머 선택창이 열리고, 다음 타이머를 고르면 바로 시작합니다.</li>
+      </ol>
+    </details>
     <details>
       <summary>아이폰에서 앱처럼 쓰기</summary>
       <ol>
