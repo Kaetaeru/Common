@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>운동 타이머</title>
-<meta name="description" content="인터벌·라운드·세트를 한 화면에서 돌리는 개인용 운동 타이머. 아이폰 홈 화면에 추가하면 앱처럼 씁니다.">
+<meta name="description" content="운동은 손으로 끝내고 휴식만 재는 세트 타이머. 아이폰 홈 화면에 추가하면 앱처럼 씁니다.">
 <meta name="theme-color" content="#0b1220">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -29,15 +29,72 @@
 
   <header class="topbar">
     <h1>운동 타이머</h1>
-    <nav class="tabs" role="tablist">
-      <button class="tab is-on" data-tab="interval" role="tab" aria-selected="true">인터벌</button>
-      <button class="tab" data-tab="stopwatch" role="tab" aria-selected="false">스톱워치</button>
-    </nav>
   </header>
 
+  <nav class="tabs" role="tablist">
+    <button class="tab is-on" data-tab="set" role="tab" aria-selected="true">세트</button>
+    <button class="tab" data-tab="interval" role="tab" aria-selected="false">인터벌</button>
+    <button class="tab" data-tab="stopwatch" role="tab" aria-selected="false">스톱워치</button>
+  </nav>
+
   <main>
-    <!-- ===================== 인터벌 ===================== -->
-    <section class="panel" id="panel-interval">
+    <!-- ===================== 세트 (운동 수동 · 휴식 타이머) ===================== -->
+    <section class="panel" id="panel-set">
+      <div class="stage" id="setStage" data-phase="idle">
+        <button class="dial" id="setDial" type="button" aria-label="다음 단계로">
+          <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
+            <circle class="ring-bg" cx="100" cy="100" r="90"></circle>
+            <circle class="ring-fg" id="setRing" cx="100" cy="100" r="90"></circle>
+          </svg>
+          <div class="dial-inner">
+            <div class="phase" id="setPhase">준비</div>
+            <div class="clock" id="setClock">00:00</div>
+            <div class="counter" id="setCounter">운동 시작을 누르세요</div>
+          </div>
+        </button>
+        <div class="meta">
+          <span id="setMetaA">세트 0</span>
+          <span class="dot">·</span>
+          <span id="setMetaB">총 00:00</span>
+        </div>
+      </div>
+
+      <div class="controls one" id="setRowIdle">
+        <button class="btn primary" id="setGoWork" type="button">운동 시작</button>
+      </div>
+
+      <div class="controls two" id="setRowWork" hidden>
+        <button class="btn ghost set-end" type="button">세트 끝</button>
+        <button class="btn primary" id="setGoRest" type="button">휴식 시작</button>
+      </div>
+
+      <div class="controls two" id="setRowRest" hidden>
+        <button class="btn ghost set-end" type="button">세트 끝</button>
+        <button class="btn primary" id="setGoWork2" type="button">운동 시작</button>
+      </div>
+
+      <div class="setup" id="setSetup">
+        <div class="block">
+          <div class="block-head">
+            <h2>휴식 시간</h2>
+            <span class="hint">운동은 직접 눌러서 끝냅니다</span>
+          </div>
+          <label class="field" id="restField">
+            <span class="field-name">휴식</span>
+            <span class="stepper">
+              <button class="step" type="button" data-delta="-10" aria-label="휴식 시간 줄이기">−</button>
+              <input inputmode="numeric" pattern="[0-9]*" id="f-restOnly" value="90">
+              <button class="step" type="button" data-delta="10" aria-label="휴식 시간 늘리기">+</button>
+            </span>
+            <span class="field-unit">초</span>
+          </label>
+          <div class="chips" id="restChips"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== 인터벌 (미리 정한 시간 자동 반복) ===================== -->
+    <section class="panel" id="panel-interval" hidden>
 
       <div class="stage" id="stage" data-phase="idle">
         <button class="dial" id="dial" type="button" aria-label="시작 또는 일시정지">
@@ -59,31 +116,11 @@
         </div>
       </div>
 
-      <div class="controls" id="controls-timer">
+      <div class="controls">
         <button class="btn ghost" id="btnReset" type="button">처음으로</button>
         <button class="btn primary" id="btnStart" type="button">시작</button>
         <button class="btn ghost" id="btnSkip" type="button">건너뛰기</button>
       </div>
-
-      <div class="controls" id="controls-done" hidden>
-        <button class="btn ghost" id="btnAgain" type="button">타이머 다시</button>
-        <button class="btn primary" id="btnWorkout" type="button">운동 시작</button>
-        <button class="btn ghost" id="btnPick" type="button">타이머 선택</button>
-      </div>
-
-      <div class="controls two" id="controls-workout" hidden>
-        <button class="btn ghost" id="btnEndSet" type="button">세트 종료</button>
-        <button class="btn primary" id="btnNextTimer" type="button">운동모드 종료</button>
-      </div>
-
-      <section class="picker" id="picker" hidden>
-        <div class="block-head">
-          <h2>다음 타이머</h2>
-          <span class="hint">누르면 바로 시작합니다</span>
-        </div>
-        <div class="picker-list" id="pickerList"></div>
-        <button class="btn ghost wide" id="pickerClose" type="button">직접 설정하기</button>
-      </section>
 
       <div class="setup" id="setup">
         <div class="block">
@@ -161,18 +198,6 @@
             </label>
           </div>
         </div>
-
-        <div class="block">
-          <div class="block-head"><h2>옵션</h2></div>
-          <div class="toggles">
-            <label class="toggle"><input type="checkbox" id="optSound" checked><span>소리 안내</span></label>
-            <label class="toggle"><input type="checkbox" id="optVibe" checked><span>진동</span></label>
-            <label class="toggle"><input type="checkbox" id="optAwake" checked><span>화면 켜두기</span></label>
-            <label class="toggle"><input type="checkbox" id="optBackground"><span>백그라운드 알람</span></label>
-          </div>
-          <p class="note">아이폰은 <b>측면 무음 스위치가 켜져 있으면 소리가 나지 않습니다.</b> 소리가 필요하면 무음을 해제하세요. 진동은 아이폰 사파리에서 동작하지 않을 수 있습니다.</p>
-          <p class="note"><b>백그라운드 알람</b>을 켜면 화면을 잠그거나 다른 앱을 봐도 알람이 울립니다. 타이머가 도는 동안 들리지 않는 소리를 계속 재생하는 방식이라, <b>듣고 있던 음악이 끊길 수 있습니다.</b> 음악을 들으며 운동할 때는 꺼 두세요.</p>
-        </div>
       </div>
     </section>
 
@@ -192,15 +217,30 @@
       </div>
       <ol class="laps" id="swLaps"></ol>
     </section>
+
+    <div class="setup" id="optionsWrap">
+      <div class="block">
+        <div class="block-head"><h2>옵션</h2></div>
+        <div class="toggles">
+          <label class="toggle"><input type="checkbox" id="optSound" checked><span>소리 안내</span></label>
+          <label class="toggle"><input type="checkbox" id="optVibe" checked><span>진동</span></label>
+          <label class="toggle"><input type="checkbox" id="optAwake" checked><span>화면 켜두기</span></label>
+          <label class="toggle"><input type="checkbox" id="optBackground"><span>백그라운드 알람</span></label>
+        </div>
+        <p class="note">아이폰은 <b>측면 무음 스위치가 켜져 있으면 소리가 나지 않습니다.</b> 소리가 필요하면 무음을 해제하세요. 진동은 아이폰 사파리에서 동작하지 않을 수 있습니다.</p>
+        <p class="note"><b>백그라운드 알람</b>을 켜면 화면을 잠그거나 다른 앱을 봐도 알람이 울립니다. 타이머가 도는 동안 들리지 않는 소리를 계속 재생하는 방식이라, <b>듣고 있던 음악이 끊길 수 있습니다.</b> 음악을 들으며 운동할 때는 꺼 두세요.</p>
+      </div>
+    </div>
   </main>
 
   <footer class="foot">
     <details>
-      <summary>운동모드 쓰는 법</summary>
+      <summary>세트 탭 쓰는 법</summary>
       <ol>
-        <li>타이머가 끝나 알람이 울리면 <b>운동 시작</b>을 눌러 운동모드로 들어갑니다. 운동한 시간이 올라가며 세트 수가 쌓입니다.</li>
-        <li><b>운동모드 종료</b> — 방금 세트를 마쳤다는 뜻. 같은 타이머가 바로 다시 시작합니다. 세트를 반복할 때 이 버튼만 누르면 됩니다.</li>
-        <li><b>세트 종료</b> — 이 운동을 끝냈다는 뜻. 타이머 선택창이 열리고, 다음 타이머를 고르면 바로 시작합니다.</li>
+        <li><b>운동 시작</b>을 누르고 운동합니다. 운동 시간은 미리 정하지 않고, 하는 동안 시간만 올라갑니다.</li>
+        <li>한 세트를 마치면 <b>휴식 시작</b>. 정해둔 휴식 시간이 내려가고, 끝나면 알람이 울립니다.</li>
+        <li>알람이 울리면 <b>운동 시작</b>을 눌러 다음 세트로. 이 두 버튼만 번갈아 누르면 됩니다.</li>
+        <li>다 했으면 <b>세트 끝</b>. 타이머가 완전히 멈추고 몇 세트를 몇 분 동안 했는지 보여줍니다.</li>
       </ol>
     </details>
     <details class="only-web">

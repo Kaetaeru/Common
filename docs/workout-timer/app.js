@@ -1,4 +1,4 @@
-/* 운동 타이머 — 인터벌 / 라운드 / 세트 + 스톱워치 (오프라인 PWA) */
+/* 운동 타이머 — 세트(운동 수동 · 휴식 타이머) / 인터벌 / 스톱워치 (오프라인 PWA) */
 (() => {
   'use strict';
 
@@ -6,12 +6,18 @@
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
   /* ------------------------------------------------------------------ 저장 */
-  const KEY = { config: 'wt.config.v1', presets: 'wt.presets.v1', options: 'wt.options.v1' };
+  const KEY = {
+    config: 'wt.config.v1',
+    presets: 'wt.presets.v1',
+    options: 'wt.options.v1',
+    rest: 'wt.rest.v1',
+    install: 'wt.install.hidden.v1',
+  };
 
   const load = (key, fallback) => {
     try {
       const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
+      return raw === null ? fallback : JSON.parse(raw);
     } catch (_) {
       return fallback;
     }
@@ -20,42 +26,25 @@
     try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) { /* 사생활 보호 모드 등 */ }
   };
 
-  /* ------------------------------------------------------------------ 설정 */
-  const FIELDS = {
-    prepare: { min: 0, max: 600, def: 10 },
-    work:    { min: 1, max: 3600, def: 30 },
-    rest:    { min: 0, max: 3600, def: 15 },
-    rounds:  { min: 1, max: 99, def: 8 },
-    sets:    { min: 1, max: 20, def: 1 },
-    setRest: { min: 0, max: 3600, def: 60 },
-  };
+  const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+  const pad = (n) => String(n).padStart(2, '0');
 
-  const BUILT_IN = [
-    { name: '타바타',     config: { prepare: 10, work: 20, rest: 10, rounds: 8, sets: 1, setRest: 60 } },
-    { name: 'HIIT',       config: { prepare: 10, work: 40, rest: 20, rounds: 10, sets: 1, setRest: 60 } },
-    { name: 'EMOM',       config: { prepare: 10, work: 60, rest: 0, rounds: 10, sets: 1, setRest: 60 } },
-    { name: '근력 세트',  config: { prepare: 10, work: 45, rest: 90, rounds: 5, sets: 1, setRest: 120 } },
-    { name: '복싱 3분',   config: { prepare: 10, work: 180, rest: 60, rounds: 3, sets: 1, setRest: 60 } },
-    { name: '플랭크',     config: { prepare: 5, work: 60, rest: 0, rounds: 1, sets: 1, setRest: 60 } },
-    { name: '스트레칭',   config: { prepare: 5, work: 30, rest: 5, rounds: 10, sets: 1, setRest: 60 } },
-  ];
+  function fmt(totalSeconds) {
+    const s = Math.max(0, Math.round(totalSeconds));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    return h > 0 ? `${h}:${pad(m)}:${pad(s % 60)}` : `${pad(m)}:${pad(s % 60)}`;
+  }
 
-  const defaults = () => Object.fromEntries(Object.entries(FIELDS).map(([k, v]) => [k, v.def]));
+  const app = $('#app');
+  const RING = 2 * Math.PI * 90;
 
-  const clean = (raw) => {
-    const out = defaults();
-    for (const [key, rule] of Object.entries(FIELDS)) {
-      const n = Math.round(Number(raw && raw[key]));
-      if (Number.isFinite(n)) out[key] = Math.min(rule.max, Math.max(rule.min, n));
-    }
-    return out;
-  };
+  let options = Object.assign(
+    { sound: true, vibe: true, awake: true, background: false },
+    load(KEY.options, {})
+  );
 
-  let config = clean(load(KEY.config, defaults()));
-  let presets = load(KEY.presets, []);
-  let options = Object.assign({ sound: true, vibe: true, awake: true, background: false }, load(KEY.options, {}));
-
-  /* ------------------------------------------------------------------ 계획 */
+  /* ------------------------------------------------------------------ 소리 */
   const PHASE = {
     prepare: { label: '준비', vibe: [80] },
     work:    { label: '운동', vibe: [120, 60, 120] },
@@ -63,35 +52,6 @@
     setRest: { label: '세트 휴식', vibe: [80, 60, 80] },
   };
 
-  let plan = [];       // [{ type, dur, round, set }]
-  let tailDur = [];    // plan[i] 이후에 남은 초
-  let planTotal = 0;
-
-  function buildPlan(c) {
-    const list = [];
-    if (c.prepare > 0) list.push({ type: 'prepare', dur: c.prepare, round: 1, set: 1 });
-    for (let s = 1; s <= c.sets; s++) {
-      for (let r = 1; r <= c.rounds; r++) {
-        list.push({ type: 'work', dur: c.work, round: r, set: s });
-        if (r < c.rounds && c.rest > 0) list.push({ type: 'rest', dur: c.rest, round: r, set: s });
-      }
-      if (s < c.sets && c.setRest > 0) list.push({ type: 'setRest', dur: c.setRest, round: c.rounds, set: s });
-    }
-    return list;
-  }
-
-  function refreshPlan() {
-    plan = buildPlan(config);
-    tailDur = new Array(plan.length).fill(0);
-    let acc = 0;
-    for (let i = plan.length - 1; i >= 0; i--) {
-      tailDur[i] = acc;
-      acc += plan[i].dur;
-    }
-    planTotal = acc;
-  }
-
-  /* ------------------------------------------------------------------ 소리 */
   let ctx = null;
   let scheduled = [];
 
@@ -128,15 +88,13 @@
   }
 
   function cancelScheduled() {
-    const ac = ctx;
-    const now = ac ? ac.currentTime : 0;
+    const now = ctx ? ctx.currentTime : 0;
     for (const item of scheduled) {
       if (item.at > now + 0.05) { try { item.osc.stop(0); } catch (_) {} }
     }
     scheduled = scheduled.filter((item) => item.at <= now + 0.05);
   }
 
-  // 단계 시작 신호
   function cue(at, type) {
     if (type === 'work') { tone(at, 880, 0.16, 0.32); tone(at + 0.18, 1175, 0.22, 0.32); }
     else if (type === 'rest') tone(at, 660, 0.3, 0.26);
@@ -145,22 +103,33 @@
     else if (type === 'done') { tone(at, 660, 0.18, 0.3); tone(at + 0.2, 880, 0.18, 0.3); tone(at + 0.4, 1320, 0.5, 0.32); }
   }
 
-  // 현재 단계가 끝날 때까지의 카운트다운 + 전환 신호를 미리 예약한다.
-  // (아이폰이 화면을 끄거나 앱을 내려도 예약된 소리는 그대로 울린다)
-  function scheduleCues() {
+  function cueNow(type) {
     const ac = audio();
-    if (!ac || !run.running) return;
-    const remainMs = run.phaseEnd - Date.now();
-    if (remainMs <= 0) return;
-    const end = ac.currentTime + remainMs / 1000;
-    for (const k of [3, 2, 1]) {
-      if (remainMs > k * 1000 + 150) tone(end - k, 784, 0.1, 0.2);
-    }
-    const next = plan[run.idx + 1];
-    if (next) cue(end, next.type);
-    else for (let i = 0; i < 3; i++) cue(end + i * 3.6, 'done'); // 놓치지 않게 세 번
+    if (ac) cue(ac.currentTime, type);
   }
 
+  // 남은 시간이 끝날 때까지의 카운트다운과 끝 신호를 미리 예약한다.
+  // 예약해 두면 화면이 꺼져 있어도 그대로 울린다.
+  function scheduleCountdown(untilMs, endType) {
+    const ac = audio();
+    if (!ac) return;
+    const remain = untilMs - Date.now();
+    if (remain <= 0) return;
+    const end = ac.currentTime + remain / 1000;
+    for (const k of [3, 2, 1]) {
+      if (remain > k * 1000 + 150) tone(end - k, 784, 0.1, 0.2);
+    }
+    if (endType === 'done') for (let i = 0; i < 3; i++) cue(end + i * 3.6, 'done'); // 놓치지 않게 세 번
+    else cue(end, endType);
+  }
+
+  function buzz(type) {
+    if (!options.vibe || !navigator.vibrate) return;
+    const pattern = type === 'done' ? [200, 90, 200] : (PHASE[type] && PHASE[type].vibe) || [80];
+    try { navigator.vibrate(pattern); } catch (_) {}
+  }
+
+  /* -------------------------------------------- 백그라운드 유지용 오디오 */
   // 아이폰은 화면을 잠그거나 앱을 내리면 페이지를 멈춘다. 들리지 않는 소리를
   // 계속 재생하면 오디오 세션이 살아 있어 타이머와 예약된 알람이 그대로 돈다.
   // 대신 다른 앱의 음악이 끊길 수 있어 기본값은 꺼 둔다.
@@ -198,8 +167,8 @@
           // 잠금화면 재생 컨트롤을 타이머에 연결한다. 전화 같은 방해로 소리가
           // 끊긴 경우가 아니라, 직접 누른 경우에만 불린다.
           try {
-            navigator.mediaSession.setActionHandler('pause', () => { if (run.running) pause(); });
-            navigator.mediaSession.setActionHandler('play', () => { if (run.started && !run.running) resume(); });
+            navigator.mediaSession.setActionHandler('pause', () => lockScreenPause());
+            navigator.mediaSession.setActionHandler('play', () => lockScreenPlay());
           } catch (_) {}
         }
       }
@@ -209,7 +178,6 @@
     } catch (_) { /* 오디오를 못 쓰는 브라우저 */ }
   }
 
-  // 잠금화면 / 제어센터에 지금 무엇이 도는지 띄운다.
   let nowPlaying = '';
 
   function setNowPlaying(text, playing) {
@@ -224,12 +192,6 @@
         artwork: [{ src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }],
       });
     } catch (_) {}
-  }
-
-  function buzz(type) {
-    if (!options.vibe || !navigator.vibrate) return;
-    const pattern = type === 'done' ? [200, 90, 200] : (PHASE[type] && PHASE[type].vibe) || [80];
-    try { navigator.vibrate(pattern); } catch (_) {}
   }
 
   /* ------------------------------------------------------------- 화면 잠금 */
@@ -249,13 +211,284 @@
     }
   }
 
-  /* ------------------------------------------------------------- 인터벌 실행 */
-  const run = { running: false, started: false, done: false, idx: 0, phaseEnd: 0, pausedLeft: 0 };
+  /* ---------------------------------------------------------------- 루프 */
   let raf = 0;
   let beat = 0;
+  let ticker = null;
+
+  function startLoop(fn) {
+    stopLoop();
+    ticker = fn;
+    const step = () => { if (ticker) ticker(); raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step);
+    beat = setInterval(() => { if (ticker) ticker(); }, 500);  // 탭이 뒤로 가면 rAF가 멈춘다
+  }
+
+  function stopLoop() {
+    if (raf) cancelAnimationFrame(raf);
+    if (beat) clearInterval(beat);
+    raf = 0;
+    beat = 0;
+    ticker = null;
+  }
+
+  /* ================================================================ 세트 */
+  // 운동 시간은 정하지 않는다. 운동하는 동안은 시간이 올라가고, 직접 눌러 끝낸다.
+  //   운동 중 → [휴식 시작] → 휴식 카운트다운 → 알람 → [운동 시작] → 다음 세트
+  //   [세트 끝] → 타이머 완전 종료
+  const REST = { min: 5, max: 3600, def: 90 };
+  let restSec = clamp(Math.round(Number(load(KEY.rest, REST.def))) || REST.def, REST.min, REST.max);
+
+  const set = { phase: 'idle', from: 0, restEnd: 0, sets: 0, startedAt: 0, endedAt: 0, done: false };
+
+  const sEl = {
+    stage: $('#setStage'),
+    ring: $('#setRing'),
+    phase: $('#setPhase'),
+    clock: $('#setClock'),
+    counter: $('#setCounter'),
+    metaA: $('#setMetaA'),
+    metaB: $('#setMetaB'),
+    rowIdle: $('#setRowIdle'),
+    rowWork: $('#setRowWork'),
+    rowRest: $('#setRowRest'),
+    input: $('#f-restOnly'),
+    chips: $('#restChips'),
+  };
+
+  function setSessionSeconds() {
+    if (!set.startedAt) return 0;
+    const until = set.phase === 'idle' ? (set.endedAt || set.startedAt) : Date.now();
+    return (until - set.startedAt) / 1000;
+  }
+
+  function startWork() {
+    cancelScheduled();
+    if (set.phase === 'idle') {
+      set.sets = 0;
+      set.startedAt = Date.now();
+      set.endedAt = 0;
+      set.done = false;
+    }
+    set.sets += 1;
+    set.phase = 'work';
+    set.from = Date.now();
+    cueNow('work');
+    buzz('work');
+    keepAwake(options.awake);
+    holdAudio(true);
+    startLoop(setTick);
+    setRender();
+  }
+
+  function startRest() {
+    if (set.phase !== 'work') return;
+    cancelScheduled();
+    set.phase = 'rest';
+    set.from = Date.now();
+    set.restEnd = Date.now() + restSec * 1000;
+    cueNow('rest');
+    buzz('rest');
+    scheduleCountdown(set.restEnd, 'done');
+    keepAwake(options.awake);
+    holdAudio(true);
+    startLoop(setTick);
+    setRender();
+  }
+
+  function endSet() {
+    if (set.phase === 'idle') return;
+    cancelScheduled();
+    stopLoop();
+    keepAwake(false);
+    holdAudio(false);
+    set.endedAt = Date.now();
+    set.phase = 'idle';
+    set.done = true;
+    setRender();
+  }
+
+  function setTick() {
+    if (set.phase === 'rest' && Date.now() >= set.restEnd) {
+      set.phase = 'ready';
+      set.from = set.restEnd;
+      buzz('done');
+    }
+    setRender();
+  }
+
+  function setRender() {
+    const phase = set.phase;
+    sEl.rowIdle.hidden = phase !== 'idle';
+    sEl.rowWork.hidden = phase !== 'work';
+    sEl.rowRest.hidden = phase !== 'rest' && phase !== 'ready';
+    app.classList.toggle('is-focus', phase !== 'idle');
+
+    sEl.metaA.textContent = `세트 ${set.sets}`;
+    sEl.metaB.textContent = `총 ${fmt(setSessionSeconds())}`;
+
+    if (phase === 'idle') {
+      sEl.stage.dataset.phase = set.done ? 'done' : 'idle';
+      sEl.phase.textContent = set.done ? '세트 끝' : '준비';
+      sEl.clock.textContent = set.done ? fmt(setSessionSeconds()) : fmt(restSec);
+      sEl.counter.textContent = set.done
+        ? `${set.sets}세트 완료`
+        : `휴식 ${fmt(restSec)} · 운동 시작을 누르세요`;
+      sEl.ring.style.strokeDashoffset = 0;
+      return;
+    }
+
+    if (phase === 'work') {
+      const sec = (Date.now() - set.from) / 1000;
+      sEl.stage.dataset.phase = 'work';
+      sEl.phase.textContent = '운동 중';
+      sEl.clock.textContent = fmt(sec);
+      sEl.counter.textContent = `${set.sets}번째 세트`;
+      sEl.ring.style.strokeDashoffset = 0;
+      setNowPlaying(`운동 중 · ${set.sets}번째 세트`, true);
+      return;
+    }
+
+    if (phase === 'rest') {
+      const left = Math.max(0, set.restEnd - Date.now()) / 1000;
+      sEl.stage.dataset.phase = 'rest';
+      sEl.phase.textContent = '휴식';
+      sEl.clock.textContent = fmt(Math.ceil(left));
+      sEl.counter.textContent = `${set.sets}세트 완료`;
+      sEl.ring.style.strokeDashoffset = RING * (1 - clamp(left / restSec, 0, 1));
+      setNowPlaying(`휴식 ${fmt(Math.ceil(left))}`, true);
+      return;
+    }
+
+    const over = (Date.now() - set.from) / 1000;   // ready
+    sEl.stage.dataset.phase = 'ready';
+    sEl.phase.textContent = '휴식 끝';
+    sEl.clock.textContent = fmt(over);
+    sEl.counter.textContent = '운동 시작을 누르세요';
+    sEl.ring.style.strokeDashoffset = 0;
+    setNowPlaying('휴식 끝 · 운동 시작', true);
+  }
+
+  function lockScreenPause() {
+    if (set.phase === 'work') startRest();
+    else if (run.running) intervalPause();
+  }
+
+  function lockScreenPlay() {
+    if (set.phase === 'rest' || set.phase === 'ready') startWork();
+    else if (run.started && !run.running) intervalResume();
+  }
+
+  $('#setGoWork').addEventListener('click', startWork);
+  $('#setGoWork2').addEventListener('click', startWork);
+  $('#setGoRest').addEventListener('click', startRest);
+  $$('.set-end').forEach((btn) => btn.addEventListener('click', endSet));
+  $('#setDial').addEventListener('click', () => {
+    if (set.phase === 'work') startRest();
+    else startWork();                              // idle · rest · ready
+  });
+
+  function setRest(value) {
+    restSec = clamp(Math.round(value) || REST.min, REST.min, REST.max);
+    sEl.input.value = restSec;
+    save(KEY.rest, restSec);
+    $$('.chip', sEl.chips).forEach((chip) => {
+      chip.classList.toggle('is-on', Number(chip.dataset.sec) === restSec);
+    });
+    if (set.phase === 'idle') setRender();
+  }
+
+  sEl.input.value = restSec;
+  sEl.input.addEventListener('input', () => {
+    if (sEl.input.value === '') return;
+    const n = Number(sEl.input.value.replace(/[^0-9]/g, ''));
+    if (Number.isFinite(n)) setRest(n);
+  });
+  sEl.input.addEventListener('blur', () => setRest(Number(sEl.input.value) || REST.def));
+  sEl.input.addEventListener('focus', () => sEl.input.select());
+
+  $$('.step', $('#restField')).forEach((btn) => {
+    btn.addEventListener('click', (event) => {
+      event.preventDefault();
+      setRest((Number(sEl.input.value) || 0) + Number(btn.dataset.delta));
+    });
+  });
+
+  for (const sec of [30, 45, 60, 90, 120, 180]) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip';
+    chip.dataset.sec = sec;
+    chip.textContent = sec < 60 ? `${sec}초` : `${sec / 60}분`;
+    chip.addEventListener('click', () => setRest(sec));
+    sEl.chips.append(chip);
+  }
+
+  /* ============================================================== 인터벌 */
+  const FIELDS = {
+    prepare: { min: 0, max: 600, def: 10 },
+    work:    { min: 1, max: 3600, def: 30 },
+    rest:    { min: 0, max: 3600, def: 15 },
+    rounds:  { min: 1, max: 99, def: 8 },
+    sets:    { min: 1, max: 20, def: 1 },
+    setRest: { min: 0, max: 3600, def: 60 },
+  };
+
+  const BUILT_IN = [
+    { name: '타바타',    config: { prepare: 10, work: 20, rest: 10, rounds: 8, sets: 1, setRest: 60 } },
+    { name: 'HIIT',      config: { prepare: 10, work: 40, rest: 20, rounds: 10, sets: 1, setRest: 60 } },
+    { name: 'EMOM',      config: { prepare: 10, work: 60, rest: 0, rounds: 10, sets: 1, setRest: 60 } },
+    { name: '근력 세트', config: { prepare: 10, work: 45, rest: 90, rounds: 5, sets: 1, setRest: 120 } },
+    { name: '복싱 3분',  config: { prepare: 10, work: 180, rest: 60, rounds: 3, sets: 1, setRest: 60 } },
+    { name: '플랭크',    config: { prepare: 5, work: 60, rest: 0, rounds: 1, sets: 1, setRest: 60 } },
+    { name: '스트레칭',  config: { prepare: 5, work: 30, rest: 5, rounds: 10, sets: 1, setRest: 60 } },
+  ];
+
+  const defaults = () => Object.fromEntries(Object.entries(FIELDS).map(([k, v]) => [k, v.def]));
+
+  const clean = (raw) => {
+    const out = defaults();
+    for (const [key, rule] of Object.entries(FIELDS)) {
+      const n = Math.round(Number(raw && raw[key]));
+      if (Number.isFinite(n)) out[key] = clamp(n, rule.min, rule.max);
+    }
+    return out;
+  };
+
+  let config = clean(load(KEY.config, defaults()));
+  let presets = load(KEY.presets, []);
+
+  let plan = [];
+  let tailDur = [];
+  let planTotal = 0;
+
+  function buildPlan(c) {
+    const list = [];
+    if (c.prepare > 0) list.push({ type: 'prepare', dur: c.prepare, round: 1, set: 1 });
+    for (let s = 1; s <= c.sets; s++) {
+      for (let r = 1; r <= c.rounds; r++) {
+        list.push({ type: 'work', dur: c.work, round: r, set: s });
+        if (r < c.rounds && c.rest > 0) list.push({ type: 'rest', dur: c.rest, round: r, set: s });
+      }
+      if (s < c.sets && c.setRest > 0) list.push({ type: 'setRest', dur: c.setRest, round: c.rounds, set: s });
+    }
+    return list;
+  }
+
+  function refreshPlan() {
+    plan = buildPlan(config);
+    tailDur = new Array(plan.length).fill(0);
+    let acc = 0;
+    for (let i = plan.length - 1; i >= 0; i--) {
+      tailDur[i] = acc;
+      acc += plan[i].dur;
+    }
+    planTotal = acc;
+  }
+
+  const run = { running: false, started: false, done: false, idx: 0, phaseEnd: 0, pausedLeft: 0 };
 
   const el = {
-    app: $('#app'),
     stage: $('#stage'),
     ring: $('#ringFg'),
     phase: $('#phaseLabel'),
@@ -265,70 +498,35 @@
     metaLeft: $('#metaLeft'),
     start: $('#btnStart'),
     skip: $('#btnSkip'),
-    reset: $('#btnReset'),
     presets: $('#presets'),
     summary: $('#planSummary'),
-    rowTimer: $('#controls-timer'),
-    rowDone: $('#controls-done'),
-    rowWorkout: $('#controls-workout'),
-    picker: $('#picker'),
-    pickerList: $('#pickerList'),
   };
 
-  function showRow(which) {
-    el.rowTimer.hidden = which !== 'timer';
-    el.rowDone.hidden = which !== 'done';
-    el.rowWorkout.hidden = which !== 'workout';
+  function scheduleIntervalCues() {
+    if (!run.running) return;
+    const next = plan[run.idx + 1];
+    scheduleCountdown(run.phaseEnd, next ? next.type : 'done');
   }
 
-  const RING = 2 * Math.PI * 90;
-
-  function pad(n) { return String(n).padStart(2, '0'); }
-
-  function fmt(totalSeconds) {
-    const s = Math.max(0, Math.round(totalSeconds));
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    return h > 0 ? `${h}:${pad(m)}:${pad(s % 60)}` : `${pad(m)}:${pad(s % 60)}`;
-  }
-
-  function startLoop() {
-    stopLoop();
-    const step = () => { tick(); raf = requestAnimationFrame(step); };
-    raf = requestAnimationFrame(step);
-    // 탭이 뒤로 가면 rAF가 멈추므로 타이머로도 한 번 더 확인한다.
-    beat = setInterval(tick, 500);
-  }
-
-  function stopLoop() {
-    if (raf) cancelAnimationFrame(raf);
-    if (beat) clearInterval(beat);
-    raf = 0;
-    beat = 0;
-  }
-
-  function begin() {
+  function intervalBegin() {
     refreshPlan();
     if (!plan.length) return;
-    workout.active = false;
-    closePicker();
     run.running = true;
     run.started = true;
     run.done = false;
     run.idx = 0;
     run.phaseEnd = Date.now() + plan[0].dur * 1000;
     cancelScheduled();
-    const ac = audio();
-    if (ac) cue(ac.currentTime, plan[0].type);
+    cueNow(plan[0].type);
     buzz(plan[0].type);
-    scheduleCues();
+    scheduleIntervalCues();
     keepAwake(options.awake);
     holdAudio(true);
-    startLoop();
-    render();
+    startLoop(intervalTick);
+    intervalRender();
   }
 
-  function pause() {
+  function intervalPause() {
     if (!run.running) return;
     run.running = false;
     run.pausedLeft = Math.max(0, run.phaseEnd - Date.now());
@@ -336,44 +534,42 @@
     stopLoop();
     keepAwake(false);
     holdAudio(false);
-    render();
+    intervalRender();
   }
 
-  function resume() {
+  function intervalResume() {
     if (run.running || !run.started || run.done) return;
     run.running = true;
     run.phaseEnd = Date.now() + run.pausedLeft;
-    scheduleCues();
+    scheduleIntervalCues();
     keepAwake(options.awake);
     holdAudio(true);
-    startLoop();
-    render();
+    startLoop(intervalTick);
+    intervalRender();
   }
 
-  function skip() {
+  function intervalSkip() {
     if (!run.started || run.done) return;
     cancelScheduled();
     run.idx += 1;
-    if (run.idx >= plan.length) { finish(); return; }
+    if (run.idx >= plan.length) { intervalFinish(); return; }
     const dur = plan[run.idx].dur * 1000;
     if (run.running) {
       run.phaseEnd = Date.now() + dur;
-      const ac = audio();
-      if (ac) cue(ac.currentTime, plan[run.idx].type);
+      cueNow(plan[run.idx].type);
       buzz(plan[run.idx].type);
-      scheduleCues();
+      scheduleIntervalCues();
     } else {
       run.pausedLeft = dur;
     }
-    render();
+    intervalRender();
   }
 
-  function reset() {
+  function intervalReset() {
     cancelScheduled();
     stopLoop();
     keepAwake(false);
     holdAudio(false);
-    workout.active = false;
     run.running = false;
     run.started = false;
     run.done = false;
@@ -381,21 +577,20 @@
     run.phaseEnd = 0;
     run.pausedLeft = 0;
     refreshPlan();
-    render();
+    intervalRender();
   }
 
-  function finish() {
+  function intervalFinish() {
     stopLoop();
     keepAwake(false);
     run.running = false;
     run.done = true;
     run.idx = plan.length;
     buzz('done');
-    render();
+    intervalRender();
   }
 
-  function tick() {
-    if (workout.active) { renderWorkout(); return; }
+  function intervalTick() {
     if (!run.running) return;
     const now = Date.now();
     let jumped = 0;
@@ -404,25 +599,22 @@
       jumped += 1;
       if (run.idx < plan.length) run.phaseEnd += plan[run.idx].dur * 1000;
     }
-    if (run.idx >= plan.length) { finish(); return; }
+    if (run.idx >= plan.length) { intervalFinish(); return; }
     if (jumped) {
       buzz(plan[run.idx].type);
-      if (jumped > 1) { cancelScheduled(); }      // 백그라운드에서 여러 단계를 지나친 경우
-      scheduleCues();
+      if (jumped > 1) cancelScheduled();        // 백그라운드에서 여러 단계를 지나친 경우
+      scheduleIntervalCues();
     }
-    render();
+    intervalRender();
   }
 
-  function render() {
+  function intervalRender() {
     const total = planTotal;
 
-    if (workout.active) { renderWorkout(); return; }
-
     if (!run.started) {
-      showRow('timer');
       el.stage.dataset.phase = 'idle';
       el.stage.classList.remove('is-paused');
-      el.app.classList.remove('is-focus');
+      app.classList.remove('is-focus');
       el.phase.textContent = '준비 완료';
       el.clock.textContent = fmt(plan.length ? plan[0].dur : 0);
       el.counter.textContent = `${config.rounds}라운드 · ${config.sets}세트`;
@@ -435,39 +627,34 @@
     }
 
     if (run.done) {
-      showRow('done');
       el.stage.dataset.phase = 'done';
       el.stage.classList.remove('is-paused');
-      el.app.classList.add('is-focus');
+      app.classList.remove('is-focus');
       el.phase.textContent = '완료';
       el.clock.textContent = fmt(total);
-      el.counter.textContent = workout.sets ? `${workout.sets}세트 완료` : `${config.rounds}라운드 × ${config.sets}세트 끝`;
+      el.counter.textContent = `${config.rounds}라운드 × ${config.sets}세트 끝`;
       el.ring.style.strokeDashoffset = 0;
       el.metaElapsed.textContent = `경과 ${fmt(total)}`;
-      el.metaLeft.textContent = '운동 시작을 누르세요';
-      setNowPlaying('완료', false);
+      el.metaLeft.textContent = '수고했어요';
+      el.start.textContent = '다시 시작';
       el.skip.disabled = true;
+      setNowPlaying('완료', false);
       return;
     }
 
     const item = plan[run.idx];
     const leftMs = run.running ? Math.max(0, run.phaseEnd - Date.now()) : run.pausedLeft;
     const leftSec = leftMs / 1000;
-    const ratio = item.dur > 0 ? Math.min(1, Math.max(0, leftSec / item.dur)) : 0;
 
-    showRow('timer');
     el.stage.dataset.phase = item.type;
     el.stage.classList.toggle('is-paused', !run.running);
-    el.app.classList.toggle('is-focus', run.running);
+    app.classList.toggle('is-focus', run.running);
     el.phase.textContent = PHASE[item.type].label + (run.running ? '' : ' (일시정지)');
     el.clock.textContent = fmt(Math.ceil(leftSec));
-    el.ring.style.strokeDashoffset = RING * (1 - ratio);
+    el.ring.style.strokeDashoffset = RING * (1 - (item.dur > 0 ? clamp(leftSec / item.dur, 0, 1) : 0));
 
-    const parts = [];
-    if (config.rounds > 1) parts.push(`라운드 ${item.round}/${config.rounds}`);
+    const parts = [`라운드 ${item.round}/${config.rounds}`];
     if (config.sets > 1) parts.push(`세트 ${item.set}/${config.sets}`);
-    if (workout.sets > 0) parts.push(`${workout.sets}세트 완료`);
-    if (!parts.length) parts.push(`총 ${fmt(total)}`);
     el.counter.textContent = parts.join(' · ');
 
     const remainAll = leftSec + tailDur[run.idx];
@@ -478,133 +665,22 @@
     setNowPlaying(`${PHASE[item.type].label} ${fmt(Math.ceil(leftSec))}`, run.running);
   }
 
-  /* --------------------------------------------------------- 운동모드 */
-  // 타이머가 끝나면 '운동 시작'을 눌러 운동모드로 들어간다. 운동모드는 시간을
-  // 세면서 두 가지 끝내기를 준다.
-  //   운동모드 종료 → 다음 타이머(같은 휴식)를 바로 이어서 시작
-  //   세트 종료     → 타이머 선택창으로
-  const workout = { active: false, startedAt: 0, sets: 0 };
-
-  function enterWorkout() {
-    cancelScheduled();
-    stopLoop();
-    run.started = false;
-    run.running = false;
-    run.done = false;
-    workout.active = true;
-    workout.startedAt = Date.now();
-    const ac = audio();
-    if (ac) cue(ac.currentTime, 'work');
-    buzz('work');
-    keepAwake(options.awake);
-    holdAudio(true);
-    startLoop();
-    renderWorkout();
+  function intervalToggle() {
+    if (run.done || !run.started) intervalBegin();
+    else if (run.running) intervalPause();
+    else intervalResume();
   }
 
-  function leaveWorkout() {
-    workout.sets += 1;
-    workout.active = false;
-    stopLoop();
-    keepAwake(false);
-  }
+  el.start.addEventListener('click', intervalToggle);
+  $('#dial').addEventListener('click', intervalToggle);
+  el.skip.addEventListener('click', intervalSkip);
+  $('#btnReset').addEventListener('click', intervalReset);
 
-  function nextTimer() {
-    if (!workout.active) return;
-    leaveWorkout();
-    begin();
-  }
-
-  function endSet() {
-    if (!workout.active) return;
-    leaveWorkout();
-    reset();
-    openPicker();
-  }
-
-  function renderWorkout() {
-    const sec = (Date.now() - workout.startedAt) / 1000;
-    showRow('workout');
-    el.app.classList.add('is-focus');
-    el.stage.dataset.phase = 'workout';
-    el.stage.classList.remove('is-paused');
-    el.phase.textContent = '운동 중';
-    el.clock.textContent = fmt(sec);
-    el.counter.textContent = `${workout.sets + 1}번째 세트`;
-    el.ring.style.strokeDashoffset = 0;
-    el.metaElapsed.textContent = workout.sets ? `완료 ${workout.sets}세트` : '세트 진행 중';
-    el.metaLeft.textContent = `다음 타이머 ${fmt(planTotal)}`;
-    setNowPlaying(`운동 중 · ${workout.sets + 1}번째 세트`, true);
-  }
-
-  /* ---------------------------------------------------- 타이머 선택창 */
-  const planLength = (c) => buildPlan(c).reduce((sum, step) => sum + step.dur, 0);
-
-  function openPicker() {
-    cancelScheduled();
-    renderPicker();
-    el.picker.hidden = false;
-    el.app.classList.add('is-picking');
-    window.scrollTo(0, 0);
-  }
-
-  function closePicker() {
-    el.picker.hidden = true;
-    el.app.classList.remove('is-picking');
-  }
-
-  function renderPicker() {
-    el.pickerList.innerHTML = '';
-    for (const item of BUILT_IN.concat(presets)) {
-      const row = document.createElement('button');
-      row.type = 'button';
-      row.className = 'pick';
-      const left = document.createElement('span');
-      const name = document.createElement('b');
-      name.textContent = item.name;
-      const detail = document.createElement('small');
-      detail.textContent = ' ' + describe(item.config);
-      left.append(name, detail);
-      const total = document.createElement('span');
-      total.className = 'total';
-      total.textContent = fmt(planLength(item.config));
-      row.append(left, total);
-      row.addEventListener('click', () => {
-        workout.sets = 0;            // 새 운동을 고른 것이므로 세트 수를 새로 센다
-        applyPreset(item.config);
-        closePicker();
-        begin();
-      });
-      el.pickerList.append(row);
-    }
-  }
-
-  function toggleStart() {
-    if (workout.active) return;
-    if (run.done) { enterWorkout(); return; }
-    if (!run.started) begin();
-    else if (run.running) pause();
-    else resume();
-  }
-
-  $('#btnWorkout').addEventListener('click', enterWorkout);
-  $('#btnAgain').addEventListener('click', () => { cancelScheduled(); workout.sets = 0; begin(); });
-  $('#btnPick').addEventListener('click', () => { reset(); openPicker(); });
-  $('#btnNextTimer').addEventListener('click', nextTimer);
-  $('#btnEndSet').addEventListener('click', endSet);
-  $('#pickerClose').addEventListener('click', () => { closePicker(); render(); });
-
-  el.start.addEventListener('click', toggleStart);
-  $('#dial').addEventListener('click', toggleStart);
-  el.skip.addEventListener('click', skip);
-  el.reset.addEventListener('click', reset);
-
-  /* ---------------------------------------------------------- 설정 입력 UI */
+  /* ------------------------------------------------------ 인터벌 설정 UI */
   const inputs = Object.fromEntries(Object.keys(FIELDS).map((k) => [k, $('#f-' + k)]));
 
   function setField(key, value) {
-    const rule = FIELDS[key];
-    config[key] = Math.min(rule.max, Math.max(rule.min, Math.round(value)));
+    config[key] = clamp(Math.round(value), FIELDS[key].min, FIELDS[key].max);
     inputs[key].value = config[key];
     afterConfigChange();
   }
@@ -615,14 +691,14 @@
     $('#field-setRest').classList.toggle('is-off', config.sets < 2);
     el.summary.textContent = `${fmt(planTotal)} · ${plan.length}단계`;
     markActivePreset();
-    if (!run.started) render();
+    if (!run.started) intervalRender();
   }
 
   for (const [key, input] of Object.entries(inputs)) {
     input.value = config[key];
     input.addEventListener('input', () => {
-      const n = Number(input.value.replace(/[^0-9]/g, ''));
       if (input.value === '') return;
+      const n = Number(input.value.replace(/[^0-9]/g, ''));
       config[key] = Number.isFinite(n) ? n : FIELDS[key].def;
       afterConfigChange();
     });
@@ -630,7 +706,7 @@
     input.addEventListener('focus', () => input.select());
   }
 
-  $$('.step').forEach((btn) => {
+  $$('.step', $('#fields')).forEach((btn) => {
     btn.addEventListener('click', (event) => {
       event.preventDefault();
       const key = btn.closest('.field').dataset.key;
@@ -638,7 +714,6 @@
     });
   });
 
-  /* ------------------------------------------------------------- 프리셋 UI */
   const sameConfig = (a, b) => Object.keys(FIELDS).every((k) => a[k] === b[k]);
 
   function markActivePreset() {
@@ -657,7 +732,7 @@
   function applyPreset(c) {
     config = clean(c);
     for (const [key, input] of Object.entries(inputs)) input.value = config[key];
-    reset();
+    intervalReset();
     afterConfigChange();
   }
 
@@ -717,28 +792,39 @@
   optAwake.checked = options.awake;
   optBackground.checked = options.background;
 
+  const timerLive = () => set.phase !== 'idle' || run.running;
+
   optSound.addEventListener('change', () => {
     options.sound = optSound.checked;
     save(KEY.options, options);
     if (!options.sound) { cancelScheduled(); holdAudio(false); }
-    else if (run.running) { scheduleCues(); holdAudio(true); }
+    else {
+      if (run.running) scheduleIntervalCues();
+      if (set.phase === 'rest') scheduleCountdown(set.restEnd, 'done');
+      holdAudio(timerLive());
+    }
+  });
+
+  optVibe.addEventListener('change', () => { options.vibe = optVibe.checked; save(KEY.options, options); });
+
+  optAwake.addEventListener('change', () => {
+    options.awake = optAwake.checked;
+    save(KEY.options, options);
+    keepAwake(options.awake && timerLive());
   });
 
   optBackground.addEventListener('change', () => {
     options.background = optBackground.checked;
     save(KEY.options, options);
-    holdAudio(run.running || workout.active);
-  });
-  optVibe.addEventListener('change', () => { options.vibe = optVibe.checked; save(KEY.options, options); });
-  optAwake.addEventListener('change', () => {
-    options.awake = optAwake.checked;
-    save(KEY.options, options);
-    keepAwake(options.awake && run.running);
+    holdAudio(timerLive());
   });
 
   /* ------------------------------------------------------------- 스톱워치 */
   const sw = { running: false, base: 0, elapsed: 0, laps: [] };
-  const swEl = { clock: $('#swClock'), counter: $('#swCounter'), laps: $('#swLaps'), start: $('#swStart'), lap: $('#swLap'), reset: $('#swReset') };
+  const swEl = {
+    clock: $('#swClock'), counter: $('#swCounter'), laps: $('#swLaps'),
+    start: $('#swStart'), lap: $('#swLap'), reset: $('#swReset'),
+  };
   let swTimer = 0;
 
   const swNow = () => sw.elapsed + (sw.running ? Date.now() - sw.base : 0);
@@ -813,6 +899,7 @@
         other.classList.toggle('is-on', on);
         other.setAttribute('aria-selected', String(on));
       });
+      $('#panel-set').hidden = tab.dataset.tab !== 'set';
       $('#panel-interval').hidden = tab.dataset.tab !== 'interval';
       $('#panel-stopwatch').hidden = tab.dataset.tab !== 'stopwatch';
       window.scrollTo(0, 0);
@@ -822,30 +909,25 @@
   /* -------------------------------------------------- 백그라운드 복귀 처리 */
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
-    if (run.running) {
+    if (timerLive()) {
       if (ctx && ctx.state === 'suspended') ctx.resume();
       keepAwake(options.awake);
       holdAudio(true);
-      tick();
     }
-    if (workout.active) {
-      if (ctx && ctx.state === 'suspended') ctx.resume();
-      keepAwake(options.awake);
-      renderWorkout();
-    }
+    if (set.phase !== 'idle') setTick();
+    if (run.running) intervalTick();
     if (sw.running) swRender();
   });
 
   /* --------------------------------------------------------- 홈 화면 추가 */
-  const INSTALL_HIDDEN = 'wt.install.hidden.v1';
   const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   let installPrompt = null;
 
   function showInstallHint() {
-    if (standalone) { el.app.classList.add('is-standalone'); return; }
-    if (load(INSTALL_HIDDEN, false)) return;
+    if (standalone) { app.classList.add('is-standalone'); return; }
+    if (load(KEY.install, false)) return;
     $('#installText').innerHTML = isIOS
       ? '<b>홈 화면에 추가하면 앱처럼 열립니다.</b> 사파리 아래 공유 버튼 → 홈 화면에 추가'
       : '<b>홈 화면에 추가하면 앱처럼 열립니다.</b> 브라우저 메뉴에서 설치 또는 홈 화면에 추가';
@@ -854,10 +936,9 @@
 
   $('#installClose').addEventListener('click', () => {
     $('#install').hidden = true;
-    save(INSTALL_HIDDEN, true);
+    save(KEY.install, true);
   });
 
-  // 안드로이드·데스크톱 크롬은 실제 설치 버튼을 줄 수 있다.
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
     installPrompt = event;
@@ -874,9 +955,11 @@
 
   /* ---------------------------------------------------------------- 시작 */
   showInstallHint();
+  setRest(restSec);
+  setRender();
   renderPresets();
   afterConfigChange();
-  reset();
+  intervalReset();
   swPaint();
   swRender();
 
