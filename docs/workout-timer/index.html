@@ -19,6 +19,14 @@
 <body>
 <div class="app" id="app">
 
+  <div class="install" id="install" hidden>
+    <p id="installText"></p>
+    <span class="install-acts">
+      <button class="link" id="installGo" type="button" hidden>설치</button>
+      <button class="link mute" id="installClose" type="button">닫기</button>
+    </span>
+  </div>
+
   <header class="topbar">
     <h1>운동 타이머</h1>
     <nav class="tabs" role="tablist">
@@ -193,7 +201,7 @@
         <li><b>세트 종료</b> — 이 운동을 끝냈다는 뜻. 타이머 선택창이 열리고, 다음 타이머를 고르면 바로 시작합니다.</li>
       </ol>
     </details>
-    <details>
+    <details class="only-web">
       <summary>아이폰에서 앱처럼 쓰기</summary>
       <ol>
         <li>사파리로 이 페이지를 엽니다.</li>

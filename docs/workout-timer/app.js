@@ -754,7 +754,44 @@
     if (sw.running) swRender();
   });
 
+  /* --------------------------------------------------------- 홈 화면 추가 */
+  const INSTALL_HIDDEN = 'wt.install.hidden.v1';
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let installPrompt = null;
+
+  function showInstallHint() {
+    if (standalone) { el.app.classList.add('is-standalone'); return; }
+    if (load(INSTALL_HIDDEN, false)) return;
+    $('#installText').innerHTML = isIOS
+      ? '<b>홈 화면에 추가하면 앱처럼 열립니다.</b> 사파리 아래 공유 버튼 → 홈 화면에 추가'
+      : '<b>홈 화면에 추가하면 앱처럼 열립니다.</b> 브라우저 메뉴에서 설치 또는 홈 화면에 추가';
+    $('#install').hidden = false;
+  }
+
+  $('#installClose').addEventListener('click', () => {
+    $('#install').hidden = true;
+    save(INSTALL_HIDDEN, true);
+  });
+
+  // 안드로이드·데스크톱 크롬은 실제 설치 버튼을 줄 수 있다.
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    installPrompt = event;
+    $('#installGo').hidden = false;
+  });
+
+  $('#installGo').addEventListener('click', async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt = null;
+    $('#install').hidden = true;
+  });
+
   /* ---------------------------------------------------------------- 시작 */
+  showInstallHint();
   renderPresets();
   afterConfigChange();
   reset();
