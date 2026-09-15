@@ -53,7 +53,7 @@
 
   let config = clean(load(KEY.config, defaults()));
   let presets = load(KEY.presets, []);
-  let options = Object.assign({ sound: true, vibe: true, awake: true }, load(KEY.options, {}));
+  let options = Object.assign({ sound: true, vibe: true, awake: true, background: false }, load(KEY.options, {}));
 
   /* ------------------------------------------------------------------ 계획 */
   const PHASE = {
@@ -161,6 +161,71 @@
     else for (let i = 0; i < 3; i++) cue(end + i * 3.6, 'done'); // 놓치지 않게 세 번
   }
 
+  // 아이폰은 화면을 잠그거나 앱을 내리면 페이지를 멈춘다. 들리지 않는 소리를
+  // 계속 재생하면 오디오 세션이 살아 있어 타이머와 예약된 알람이 그대로 돈다.
+  // 대신 다른 앱의 음악이 끊길 수 있어 기본값은 꺼 둔다.
+  let keeper = null;
+
+  function keeperSource() {
+    const rate = 8000;
+    const frames = rate;                      // 1초를 반복 재생
+    const buf = new ArrayBuffer(44 + frames * 2);
+    const view = new DataView(buf);
+    const tag = (at, text) => { for (let i = 0; i < text.length; i++) view.setUint8(at + i, text.charCodeAt(i)); };
+    tag(0, 'RIFF'); view.setUint32(4, 36 + frames * 2, true); tag(8, 'WAVEfmt ');
+    view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, rate, true); view.setUint32(28, rate * 2, true);
+    view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+    tag(36, 'data'); view.setUint32(40, frames * 2, true);
+    for (let i = 0; i < frames; i++) view.setInt16(44 + i * 2, i % 2 ? 1 : -1, true); // 최소 진폭 = 들리지 않음
+    return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  }
+
+  function holdAudio(on) {
+    const want = on && options.background && options.sound;
+    try {
+      if (!want) {
+        if (keeper) keeper.pause();
+        return;
+      }
+      if (!keeper) {
+        keeper = new Audio(keeperSource());
+        keeper.loop = true;
+        keeper.setAttribute('playsinline', '');
+        keeper.hidden = true;
+        document.body.append(keeper);   // 문서에 붙은 미디어라야 사파리가 계속 재생한다
+        if ('mediaSession' in navigator) {
+          // 잠금화면 재생 컨트롤을 타이머에 연결한다. 전화 같은 방해로 소리가
+          // 끊긴 경우가 아니라, 직접 누른 경우에만 불린다.
+          try {
+            navigator.mediaSession.setActionHandler('pause', () => { if (run.running) pause(); });
+            navigator.mediaSession.setActionHandler('play', () => { if (run.started && !run.running) resume(); });
+          } catch (_) {}
+        }
+      }
+      if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
+      const played = keeper.play();
+      if (played && played.catch) played.catch(() => {});
+    } catch (_) { /* 오디오를 못 쓰는 브라우저 */ }
+  }
+
+  // 잠금화면 / 제어센터에 지금 무엇이 도는지 띄운다.
+  let nowPlaying = '';
+
+  function setNowPlaying(text, playing) {
+    if (!('mediaSession' in navigator) || !keeper || keeper.paused) return;
+    try {
+      navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+      if (text === nowPlaying) return;
+      nowPlaying = text;
+      navigator.mediaSession.metadata = new window.MediaMetadata({
+        title: text,
+        artist: '운동 타이머',
+        artwork: [{ src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }],
+      });
+    } catch (_) {}
+  }
+
   function buzz(type) {
     if (!options.vibe || !navigator.vibrate) return;
     const pattern = type === 'done' ? [200, 90, 200] : (PHASE[type] && PHASE[type].vibe) || [80];
@@ -258,6 +323,7 @@
     buzz(plan[0].type);
     scheduleCues();
     keepAwake(options.awake);
+    holdAudio(true);
     startLoop();
     render();
   }
@@ -269,6 +335,7 @@
     cancelScheduled();
     stopLoop();
     keepAwake(false);
+    holdAudio(false);
     render();
   }
 
@@ -278,6 +345,7 @@
     run.phaseEnd = Date.now() + run.pausedLeft;
     scheduleCues();
     keepAwake(options.awake);
+    holdAudio(true);
     startLoop();
     render();
   }
@@ -304,6 +372,7 @@
     cancelScheduled();
     stopLoop();
     keepAwake(false);
+    holdAudio(false);
     workout.active = false;
     run.running = false;
     run.started = false;
@@ -376,6 +445,7 @@
       el.ring.style.strokeDashoffset = 0;
       el.metaElapsed.textContent = `경과 ${fmt(total)}`;
       el.metaLeft.textContent = '운동 시작을 누르세요';
+      setNowPlaying('완료', false);
       el.skip.disabled = true;
       return;
     }
@@ -405,6 +475,7 @@
     el.metaLeft.textContent = `남음 ${fmt(remainAll)}`;
     el.start.textContent = run.running ? '일시정지' : '계속';
     el.skip.disabled = false;
+    setNowPlaying(`${PHASE[item.type].label} ${fmt(Math.ceil(leftSec))}`, run.running);
   }
 
   /* --------------------------------------------------------- 운동모드 */
@@ -426,6 +497,7 @@
     if (ac) cue(ac.currentTime, 'work');
     buzz('work');
     keepAwake(options.awake);
+    holdAudio(true);
     startLoop();
     renderWorkout();
   }
@@ -462,6 +534,7 @@
     el.ring.style.strokeDashoffset = 0;
     el.metaElapsed.textContent = workout.sets ? `완료 ${workout.sets}세트` : '세트 진행 중';
     el.metaLeft.textContent = `다음 타이머 ${fmt(planTotal)}`;
+    setNowPlaying(`운동 중 · ${workout.sets + 1}번째 세트`, true);
   }
 
   /* ---------------------------------------------------- 타이머 선택창 */
@@ -638,15 +711,23 @@
   const optSound = $('#optSound');
   const optVibe = $('#optVibe');
   const optAwake = $('#optAwake');
+  const optBackground = $('#optBackground');
   optSound.checked = options.sound;
   optVibe.checked = options.vibe;
   optAwake.checked = options.awake;
+  optBackground.checked = options.background;
 
   optSound.addEventListener('change', () => {
     options.sound = optSound.checked;
     save(KEY.options, options);
-    if (!options.sound) cancelScheduled();
-    else if (run.running) scheduleCues();
+    if (!options.sound) { cancelScheduled(); holdAudio(false); }
+    else if (run.running) { scheduleCues(); holdAudio(true); }
+  });
+
+  optBackground.addEventListener('change', () => {
+    options.background = optBackground.checked;
+    save(KEY.options, options);
+    holdAudio(run.running || workout.active);
   });
   optVibe.addEventListener('change', () => { options.vibe = optVibe.checked; save(KEY.options, options); });
   optAwake.addEventListener('change', () => {
@@ -744,6 +825,7 @@
     if (run.running) {
       if (ctx && ctx.state === 'suspended') ctx.resume();
       keepAwake(options.awake);
+      holdAudio(true);
       tick();
     }
     if (workout.active) {
