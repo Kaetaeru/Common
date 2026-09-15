@@ -39,6 +39,18 @@ body {
   padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
 }
 
+/* ---------- 설치 안내 ---------- */
+.install {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 12px; padding: 11px 14px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--card);
+}
+.install p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.install b { color: var(--text); font-weight: 700; }
+.install-acts { display: flex; gap: 12px; white-space: nowrap; }
+.install .link.mute { color: var(--muted); }
+.app.is-standalone .install, .app.is-standalone .only-web { display: none; }
+
 /* ---------- top bar ---------- */
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .topbar h1 { margin: 0; font-size: 17px; letter-spacing: -0.01em; }

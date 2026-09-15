@@ -1,5 +1,5 @@
 /* 오프라인 캐시 — 내용을 바꾸면 CACHE 이름의 숫자를 올린다 */
-const CACHE = 'workout-timer-v2';
+const CACHE = 'workout-timer-v4';
 const ASSETS = [
   './',
   'index.html',
