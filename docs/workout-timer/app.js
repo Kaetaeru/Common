@@ -55,6 +55,15 @@
   let ctx = null;
   let scheduled = [];
 
+  // 아이폰에서 웹이 소리를 낼 때 다른 앱의 음악을 어떻게 다룰지 정한다.
+  //   ambient  = 음악과 섞여 난다. 대신 화면을 끄면 우리 쪽이 멈춘다.
+  //   playback = 오디오를 넘겨받아 화면이 꺼져도 계속 난다. 음악은 끊긴다.
+  function audioSession(kind) {
+    try {
+      if ('audioSession' in navigator) navigator.audioSession.type = kind;
+    } catch (_) {}
+  }
+
   function audio() {
     if (!options.sound) return null;
     try {
@@ -62,6 +71,7 @@
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return null;
         ctx = new AC();
+        audioSession('ambient');            // 기본은 음악을 끊지 않는 쪽
       }
       if (ctx.state === 'suspended') ctx.resume();
       return ctx;
@@ -155,6 +165,7 @@
     try {
       if (!want) {
         if (keeper) keeper.pause();
+        audioSession('ambient');            // 음악을 돌려준다
         return;
       }
       if (!keeper) {
@@ -172,7 +183,7 @@
           } catch (_) {}
         }
       }
-      if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
+      audioSession('playback');
       const played = keeper.play();
       if (played && played.catch) played.catch(() => {});
     } catch (_) { /* 오디오를 못 쓰는 브라우저 */ }
@@ -240,6 +251,7 @@
   let restSec = clamp(Math.round(Number(load(KEY.rest, REST.def))) || REST.def, REST.min, REST.max);
 
   const set = { phase: 'idle', from: 0, restEnd: 0, sets: 0, startedAt: 0, endedAt: 0, done: false };
+  let releaseTimer = 0;   // 알람이 다 울린 뒤 오디오를 놓아 음악을 돌려주는 타이머
 
   const sEl = {
     stage: $('#setStage'),
@@ -276,7 +288,8 @@
     cueNow('work');
     buzz('work');
     keepAwake(options.awake);
-    holdAudio(true);
+    clearTimeout(releaseTimer);
+    holdAudio(false);      // 운동 중에는 울릴 알람이 없다 → 음악을 건드리지 않는다
     startLoop(setTick);
     setRender();
   }
@@ -291,7 +304,8 @@
     buzz('rest');
     scheduleCountdown(set.restEnd, 'done');
     keepAwake(options.awake);
-    holdAudio(true);
+    clearTimeout(releaseTimer);
+    holdAudio(true);       // 휴식이 끝날 때 울려야 하므로 이 동안만 잡는다
     startLoop(setTick);
     setRender();
   }
@@ -301,6 +315,7 @@
     cancelScheduled();
     stopLoop();
     keepAwake(false);
+    clearTimeout(releaseTimer);
     holdAudio(false);
     set.endedAt = Date.now();
     set.phase = 'idle';
@@ -313,6 +328,8 @@
       set.phase = 'ready';
       set.from = set.restEnd;
       buzz('done');
+      clearTimeout(releaseTimer);
+      releaseTimer = setTimeout(() => holdAudio(false), 9000);  // 세 번째 알람까지 울린 뒤 음악을 돌려준다
     }
     setRender();
   }
@@ -801,7 +818,7 @@
     else {
       if (run.running) scheduleIntervalCues();
       if (set.phase === 'rest') scheduleCountdown(set.restEnd, 'done');
-      holdAudio(timerLive());
+      holdAudio(set.phase === 'rest' || run.running);
     }
   });
 
@@ -816,7 +833,7 @@
   optBackground.addEventListener('change', () => {
     options.background = optBackground.checked;
     save(KEY.options, options);
-    holdAudio(timerLive());
+    holdAudio(set.phase === 'rest' || run.running);
   });
 
   /* ------------------------------------------------------------- 스톱워치 */
@@ -912,7 +929,7 @@
     if (timerLive()) {
       if (ctx && ctx.state === 'suspended') ctx.resume();
       keepAwake(options.awake);
-      holdAudio(true);
+      holdAudio(set.phase === 'rest' || run.running);
     }
     if (set.phase !== 'idle') setTick();
     if (run.running) intervalTick();
