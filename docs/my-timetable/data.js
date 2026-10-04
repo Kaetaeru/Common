@@ -1,0 +1,65 @@
+/*
+ * 내 시간표 데이터 — AY2026 가을학기
+ * 출처: APU 공식 timetable (2023APS_Curriculum_26Fall_260928.xlsx), AY2026 Academic Calendar
+ * 수업이나 강의실이 바뀌면 이 파일만 고치고 sw.js 의 CACHE 숫자를 올린다.
+ */
+window.TT = {
+  term: 'AY2026 Fall',
+
+  // 정규 교시 (APU Regular Course Timetable)
+  periods: {
+    1: ['08:45', '10:25'],
+    2: ['10:35', '12:15'],
+    3: ['12:30', '14:10'],
+    4: ['14:20', '16:00'],
+    5: ['16:10', '17:50'],
+    6: ['18:00', '19:40'],
+  },
+  // 보강일·세션 기간은 3교시부터 시간이 다르다
+  makeupPeriods: {
+    1: ['08:45', '10:25'],
+    2: ['10:35', '12:15'],
+    3: ['13:05', '14:45'],
+    4: ['14:55', '16:35'],
+    5: ['16:45', '18:25'],
+    6: ['18:35', '20:15'],
+  },
+
+  // term: Q1 = 1쿼터만, Q2 = 2쿼터만, SEM = 학기 전체(1·2쿼터)
+  courses: {
+    10128: { name: 'Negotiation Skills', short: '협상 스킬', ko: '네고시에이션 스킬', teacher: 'YANG Xiaoling', room: 'J103', term: 'Q1', sid: 'a0ZQ8000004S4MtMAK' },
+    10048: { name: 'Japanese History', short: '일본사', ko: '일본의 역사', teacher: '蓮田 隆志', room: 'F201', term: 'SEM', sid: 'a0ZQ8000004S4MQMA0' },
+    11477: { name: 'Diverse Perspectives on Understanding Careers', short: '커리어 관점', ko: '커리어 형성을 위한 다양한 관점', teacher: '金井 秀介', room: 'F105', term: 'SEM', sid: 'a0ZQ8000004S4a2MAC' },
+    11363: { name: 'Multicultural Cooperative Workshop', short: '다문화 워크숍', ko: '다문화 협동 워크숍', teacher: '王 楚君', room: 'FⅡ220', term: 'SEM', sid: 'a0ZQ8000004S4Q0MAK' },
+    11471: { name: 'Self-analysis for Career Design', short: '자기분석', ko: '커리어 형성을 위한 자기분석', teacher: '金子 奈央', room: 'FⅡ126', term: 'SEM', sid: 'a0ZQ8000004S4beMAC' },
+    10121: { name: 'Psychology', short: '심리학', ko: '심리학', teacher: '横田 文彦', room: 'F204', term: 'SEM', sid: 'a0ZQ8000004S4L9MAK' },
+    13192: { name: 'Advanced Japanese', short: '일본어 상급', ko: '일본어 상급', teacher: '井上 佳子', room: 'FⅡ230', term: 'SEM', sid: 'a0ZQ8000005yEaSMAU' },
+    10056: { name: 'Languages of the Asia Pacific', short: '아태 언어', ko: '아시아 태평양의 언어', teacher: 'BLACKWELL James', room: 'FⅡ221', term: 'SEM', sid: 'a0ZQ8000004S4Q3MAK' },
+  },
+
+  // [요일 1=월 … 5=금, 교시, Class code]
+  slots: [
+    [1, 1, 10128], [1, 2, 10128], [1, 3, 13192],
+    [2, 1, 10048], [2, 2, 11477], [2, 3, 13192],
+    [3, 2, 11363],
+    [4, 2, 11471], [4, 3, 13192],
+    [5, 2, 10121], [5, 3, 13192], [5, 4, 10056],
+  ],
+
+  // 학사력 (AY2026 Academic Calendar)
+  calendar: {
+    q1: ['2026-10-05', '2026-11-20'],      // 1쿼터 정규 수업
+    q1Exam: ['2026-11-23', '2026-11-25'],  // 1쿼터 기말시험 (25일은 예비일)
+    q2: ['2026-11-30', '2027-01-29'],      // 2쿼터 정규 수업
+    q2Exam: ['2027-02-01', '2027-02-06'],  // 2쿼터 기말시험
+    breaks: [
+      ['2026-12-24', '2027-01-06', '겨울방학'],
+    ],
+    holidaysWithClass: {
+      '2026-10-12': '스포츠의 날',
+      '2026-11-03': '문화의 날',
+      '2027-01-11': '성인의 날',
+    },
+    makeupDays: ['2026-10-17', '2026-11-07', '2026-11-21', '2026-12-12', '2027-01-09', '2027-01-30'],
+  },
+};

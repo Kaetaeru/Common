@@ -1,0 +1,186 @@
+/* 내 시간표 — 오늘 우선 화면, 아래 탭바로 하루/주간/과목 전환 */
+:root {
+  color-scheme: light;
+  --bg: #f4f6f3;
+  --surface: #ffffff;
+  --sunk: #e7ebe6;
+  --line: #d6ddd5;
+  --text: #17211b;
+  --muted: #5d6b62;
+  --accent: #1e6b52;
+  --accent-soft: #dcebe3;
+  --now: #c4531a;
+  --now-soft: #f8e3d4;
+  --warn-soft: #f3ecd6;
+  --warn: #7a5a0c;
+  --radius: 14px;
+  --font: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Noto Sans KR", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0f1512;
+    --surface: #18211c;
+    --sunk: #1f2a24;
+    --line: #2b3832;
+    --text: #e6ede8;
+    --muted: #94a39a;
+    --accent: #62c39f;
+    --accent-soft: #1c3a2e;
+    --now: #f08d55;
+    --now-soft: #3b2619;
+    --warn-soft: #34301c;
+    --warn: #e2c36e;
+  }
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 var(--font);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+button { font: inherit; color: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app {
+  max-width: 520px;
+  margin: 0 auto;
+  min-height: 100%;
+  padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(84px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------- 상단 ---------- */
+.top { display: flex; flex-direction: column; gap: 10px; }
+.top-row { display: flex; justify-content: space-between; align-items: center; min-height: 30px; }
+.eyebrow { margin: 0; font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+.today-btn { border: 0; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 14px; padding: 5px 12px; border-radius: 999px; cursor: pointer; }
+.date-row { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; gap: 6px; }
+h1 { margin: 0; text-align: center; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.nav { width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--sunk); font-size: 24px; line-height: 1; cursor: pointer; display: grid; place-items: center; padding-bottom: 3px; }
+.nav.sm { width: 34px; height: 34px; font-size: 20px; }
+.nav:active { background: var(--line); }
+
+.strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.strip button {
+  border: 0; background: transparent; border-radius: 12px; padding: 6px 0 7px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.strip .wd { font-size: 12px; color: var(--muted); }
+.strip .dn { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; }
+.strip .dots { display: flex; gap: 2px; height: 5px; }
+.strip .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); opacity: .55; }
+.strip .is-today .dn { color: var(--now); }
+.strip [aria-selected="true"] .dn { background: var(--text); color: var(--bg); }
+.strip .is-off .wd, .strip .is-off .dn { opacity: .45; }
+
+/* ---------- 상태 카드 ---------- */
+.status {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px;
+}
+.status .dot { width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--muted); flex: none; }
+.status.live { border-color: var(--now); }
+.status.live .dot { background: var(--now); box-shadow: 0 0 0 4px var(--now-soft); }
+.status.next .dot { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.status .txt { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.status .lbl { font-size: 12px; font-weight: 700; letter-spacing: .05em; color: var(--muted); }
+.status.live .lbl { color: var(--now); }
+.status.next .lbl { color: var(--accent); }
+.status .main { font-weight: 650; font-size: 17px; }
+.status .meta { font-size: 14px; color: var(--muted); }
+.status .meta b { color: var(--text); font-weight: 650; }
+.bar { height: 4px; border-radius: 2px; background: var(--sunk); margin-top: 8px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--now); }
+
+.notice { background: var(--warn-soft); color: var(--warn); border-radius: 12px; padding: 10px 14px; font-size: 14px; font-weight: 500; }
+
+/* ---------- 하루 목록 ---------- */
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.item { display: grid; grid-template-columns: 58px 1fr; gap: 12px; padding: 7px 0; }
+.time { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 14px; line-height: 1.3; padding-top: 12px; }
+.time b { display: block; font-weight: 600; font-size: 15px; }
+.time span { color: var(--muted); }
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 14px; min-width: 0; display: flex; flex-direction: column; gap: 8px;
+}
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.cname { font-weight: 650; font-size: 16px; line-height: 1.3; min-width: 0; }
+.cname small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); margin-top: 2px; }
+.room {
+  flex: none; font-weight: 700; font-size: 15px; color: var(--accent); background: var(--accent-soft);
+  padding: 4px 10px; border-radius: 8px; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;
+}
+.room svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.cmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; color: var(--muted); }
+.cmeta .period { font-weight: 600; color: var(--text); }
+.cmeta a { color: var(--accent); text-decoration: none; font-family: var(--mono); }
+.item.live .card { border-color: var(--now); box-shadow: inset 3px 0 0 var(--now); }
+.item.live .time b { color: var(--now); }
+.item.done { opacity: .5; }
+.gap { grid-column: 2; font-size: 12px; color: var(--muted); font-family: var(--mono); padding: 0 0 0 4px; }
+
+.empty { text-align: center; color: var(--muted); padding: 34px 12px 18px; display: flex; flex-direction: column; gap: 4px; }
+.empty strong { color: var(--text); font-size: 17px; }
+
+.jump { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; padding: 10px 14px; background: var(--sunk); border-radius: 12px; font-size: 14px; color: var(--muted); }
+.jump input { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; }
+
+/* ---------- 주간 ---------- */
+.grid-wrap { overflow-x: auto; }
+.grid { width: 100%; border-collapse: separate; border-spacing: 3px; table-layout: fixed; font-size: 12px; }
+.grid th { font-weight: 600; color: var(--muted); padding: 4px 0; }
+.grid th.is-today { color: var(--now); }
+.grid th.p { width: 38px; font-family: var(--mono); font-size: 11px; line-height: 1.2; text-align: left; vertical-align: top; padding-top: 6px; }
+.grid th.p b { display: block; color: var(--text); font-size: 13px; }
+.grid td { height: 64px; vertical-align: top; border-radius: 8px; background: var(--sunk); padding: 0; }
+.grid td.off { background: transparent; border: 1px dashed var(--line); }
+.grid td button {
+  width: 100%; height: 100%; border: 0; border-radius: 8px; background: var(--accent-soft); text-align: left;
+  padding: 5px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;
+}
+.grid td button b { font-size: 12px; line-height: 1.2; font-weight: 650; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: keep-all; overflow-wrap: anywhere; }
+.grid td button span { font-size: 11px; color: var(--accent); font-weight: 700; }
+.grid td.live button { box-shadow: inset 0 0 0 2px var(--now); }
+
+/* ---------- 과목 ---------- */
+.courses { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.courses .card { gap: 6px; }
+.meet { display: flex; flex-wrap: wrap; gap: 6px; }
+.meet span { font-size: 13px; background: var(--sunk); border-radius: 6px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
+.tag { font-size: 11px; font-weight: 700; color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; margin-left: 4px; vertical-align: 2px; }
+
+.hint { font-size: 13px; color: var(--muted); margin: 6px 2px 0; }
+
+/* ---------- 탭바 ---------- */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  padding: 6px max(16px, env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  -webkit-backdrop-filter: saturate(1.6) blur(16px); backdrop-filter: saturate(1.6) blur(16px);
+  border-top: 1px solid var(--line);
+}
+.tab { border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 0; color: var(--muted); font-size: 11px; font-weight: 600; cursor: pointer; }
+.tab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tab svg .fill { fill: currentColor; stroke: none; }
+.tab.is-on { color: var(--accent); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .status.live .dot { animation: pulse 2s infinite; }
+  #main.slide-l { animation: slideL .18s ease-out; }
+  #main.slide-r { animation: slideR .18s ease-out; }
+}
+@keyframes pulse { 50% { box-shadow: 0 0 0 7px var(--now-soft); } }
+@keyframes slideL { from { transform: translateX(14px); opacity: .4; } }
+@keyframes slideR { from { transform: translateX(-14px); opacity: .4; } }
