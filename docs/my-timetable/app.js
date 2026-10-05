@@ -71,6 +71,12 @@
     return null;
   }
 
+  /* ---------- JASSO 장학금 신청 기간 ---------- */
+  const jassoOn = (s) => {
+    const w = (T.jasso || []).find(([a, b]) => s >= a && s <= b);
+    return w ? { start: w[0], end: w[1], pay: w[2], name: w[3] } : null;
+  };
+
   /* ---------- 상태 ---------- */
   let view = 'day';
   let sel = nowJST().date;
@@ -89,8 +95,9 @@
       const s = addDays(mon, i);
       const info = dayInfo(s);
       const n = info.slots.length;
-      const cls = [s === today ? 'is-today' : '', n ? '' : 'is-off'].join(' ');
-      h += `<button type="button" role="tab" class="${cls}" data-date="${s}" aria-selected="${s === sel}" aria-label="${label(s)}, 수업 ${n}개">
+      const jw = jassoOn(s);
+      const cls = [s === today ? 'is-today' : '', n ? '' : 'is-off', jw ? 'has-jasso' : ''].join(' ');
+      h += `<button type="button" role="tab" class="${cls}" data-date="${s}" aria-selected="${s === sel}" aria-label="${label(s)}, 수업 ${n}개${jw ? ', JASSO 장학금 신청 가능' : ''}">
         <span class="wd">${WD[dow(s)]}</span><span class="dn">${parse(s).getUTCDate()}</span>
         <span class="dots">${'<i></i>'.repeat(Math.min(n, 4))}</span></button>`;
     }
@@ -142,11 +149,26 @@
     }
   }
 
+  function renderJasso() {
+    const box = $('jasso');
+    const w = jassoOn(sel);
+    if (!w) { box.hidden = true; return; }
+    const today = nowJST().date;
+    const when = sel === w.end ? '이날 마감' : `마감 ${short(w.end)}`;
+    const dday = sel === today ? ` · D-${diffDays(today, w.end)}` : '';
+    box.hidden = false;
+    box.innerHTML = `<span class="tagj">JASSO</span><div class="txt">
+      <span class="lbl">장학금 신청 가능 · ${w.name}</span>
+      <span class="meta">신청 ${short(w.start)} ~ ${short(w.end)} · ${when}${dday}</span>
+      <span class="meta">지급 예정 ${short(w.pay)}</span></div>`;
+  }
+
   function renderDay() {
     const { date: today, min } = nowJST();
     const info = dayInfo(sel);
     $('notice').hidden = !info.note;
     $('notice').textContent = info.note;
+    renderJasso();
     const list = $('list');
     if (!info.slots.length) {
       const msg = { weekend: '주말이에요', break: '방학이에요', exam: '정규 수업 없음', makeup: '정해진 수업 없음', pre: '아직 개강 전', end: '학기 종료', gap: '정규 수업 없음' }[info.kind] || '수업 없음';
@@ -185,7 +207,7 @@
     const infos = days.map(dayInfo);
     const maxP = Math.max(4, ...T.slots.map((s) => s[1]));
     let h = '<thead><tr><th class="p"></th>';
-    days.forEach((s) => { h += `<th class="${s === today ? 'is-today' : ''}">${WD[dow(s)]} ${parse(s).getUTCDate()}</th>`; });
+    days.forEach((s) => { h += `<th class="${s === today ? 'is-today' : ''}${jassoOn(s) ? ' has-jasso' : ''}">${WD[dow(s)]} ${parse(s).getUTCDate()}</th>`; });
     h += '</tr></thead><tbody>';
     for (let p = 1; p <= maxP; p++) {
       h += `<tr><th class="p"><b>${p}</b>${T.periods[p][0]}</th>`;
@@ -203,6 +225,14 @@
       h += '</tr>';
     }
     $('grid').innerHTML = h + '</tbody>';
+    const seen = [];
+    for (let i = 0; i < 7; i++) {
+      const w = jassoOn(addDays(mon, i));
+      if (w && !seen.some((x) => x.start === w.start)) seen.push(w);
+    }
+    const jw = $('jassoWeek');
+    jw.hidden = !seen.length;
+    jw.innerHTML = seen.map((w) => `<b>JASSO</b> ${w.name} 신청 ${short(w.start)} ~ ${short(w.end)}`).join('<br>');
   }
 
   function renderCourses() {

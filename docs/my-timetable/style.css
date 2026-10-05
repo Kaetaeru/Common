@@ -13,6 +13,8 @@
   --now-soft: #f8e3d4;
   --warn-soft: #f3ecd6;
   --warn: #7a5a0c;
+  --jasso: #2b5fa8;
+  --jasso-soft: #dde8f5;
   --radius: 14px;
   --font: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Noto Sans KR", sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -32,6 +34,8 @@
     --now-soft: #3b2619;
     --warn-soft: #34301c;
     --warn: #e2c36e;
+    --jasso: #7fb0ee;
+    --jasso-soft: #1b2b40;
   }
 }
 
@@ -184,3 +188,15 @@ h1 { margin: 0; text-align: center; font-size: 22px; font-weight: 700; letter-sp
 @keyframes pulse { 50% { box-shadow: 0 0 0 7px var(--now-soft); } }
 @keyframes slideL { from { transform: translateX(14px); opacity: .4; } }
 @keyframes slideR { from { transform: translateX(-14px); opacity: .4; } }
+
+/* ---------- JASSO 장학금 신청 가능 표시 ---------- */
+.jasso { display: flex; gap: 12px; align-items: flex-start; background: var(--jasso-soft); border: 1px solid var(--jasso); border-radius: 12px; padding: 10px 14px; }
+.jasso .tagj { flex: none; font-size: 11px; font-weight: 800; letter-spacing: .06em; color: var(--bg); background: var(--jasso); border-radius: 6px; padding: 3px 7px; margin-top: 2px; }
+.jasso .txt { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.jasso .lbl { font-weight: 650; font-size: 15px; color: var(--jasso); }
+.jasso .meta { font-size: 13px; color: var(--muted); }
+.strip .has-jasso .dn { box-shadow: 0 0 0 2px var(--jasso); }
+.strip .has-jasso[aria-selected="true"] .dn { box-shadow: 0 0 0 2px var(--jasso), 0 0 0 4px var(--jasso-soft); }
+.grid th.has-jasso { color: var(--jasso); box-shadow: inset 0 -3px 0 var(--jasso); }
+.jasso-week { margin: 10px 2px 0; font-size: 13px; color: var(--muted); line-height: 1.6; }
+.jasso-week b { color: var(--jasso); font-weight: 800; letter-spacing: .04em; }
