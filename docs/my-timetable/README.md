@@ -32,7 +32,7 @@ APU AY2026 가을학기 내 수업 시간표. 열면 바로 **오늘 수업, 지
 - 강의실이 바뀌면 해당 과목의 `room`을 고칩니다.
 - 과목을 추가하면 `courses`에 과목을, `slots`에 `[요일, 교시, Class code]`를 넣습니다. `term`은 1쿼터만 `'Q1'`, 2쿼터만 `'Q2'`, 학기 내내 `'SEM'`.
 
-고친 뒤에는 `sw.js`의 `CACHE` 값(`my-timetable-v2`)의 숫자를 올려 주세요.
+고친 뒤에는 `sw.js`의 `CACHE` 값(`my-timetable-v3`)의 숫자를 올려 주세요.
 
 출처: APU 공식 timetable `2023APS_Curriculum_26Fall_260928.xlsx`, AY2026 Academic Calendar.
 
