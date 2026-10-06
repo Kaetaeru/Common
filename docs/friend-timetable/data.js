@@ -27,12 +27,23 @@ window.TT = {
 
   // term: Q1 = 1쿼터만, Q2 = 2쿼터만, SEM = 학기 전체(1·2쿼터)
   courses: {
-    // 예) 10048: { name: 'Japanese History', short: '일본사', ko: '일본의 역사', teacher: '蓮田 隆志', room: 'F201', term: 'SEM', sid: 'a0ZQ8000004S4MQMA0' },
+    10116: { name: 'Legal Studies', short: '법학', ko: '법학', teacher: '上子 秋生', room: 'F202', term: 'Q1', sid: 'a0ZQ8000004S4JaMAK' },
+    13130: { name: 'Foundation Japanese III', short: '일본어 초급Ⅲ', ko: '일본어 초급Ⅲ', teacher: '廣津 公子', room: 'F211', term: 'SEM', sid: 'a0ZQ8000005yEX4MAM' },
+    10048: { name: 'Japanese History', short: '일본사', ko: '일본의 역사', teacher: '蓮田 隆志', room: 'F201', term: 'SEM', sid: 'a0ZQ8000004S4MQMA0' },
+    11477: { name: 'Diverse Perspectives on Understanding Careers', short: '커리어 관점', ko: '커리어 형성을 위한 다양한 관점', teacher: '金井 秀介', room: 'F105', term: 'SEM', sid: 'a0ZQ8000004S4a2MAC' },
+    11357: { name: 'Multicultural Cooperative Workshop', short: '다문화 워크숍', ko: '다문화 협동 워크숍', teacher: 'COUSINS Elicia', room: 'FⅡ121', term: 'SEM', sid: 'a0ZQ8000004S4NGMA0' },
+    11452: { name: 'Foundation for Global Leadership', short: '글로벌 리더십', ko: '글로벌 리더십의 기초', teacher: '三好 登', room: 'J202', term: 'SEM', sid: 'a0ZQ8000004S4a1MAC' },
+    10056: { name: 'Languages of the Asia Pacific', short: '아태 언어', ko: '아시아 태평양의 언어', teacher: 'BLACKWELL James', room: 'FⅡ221', term: 'SEM', sid: 'a0ZQ8000004S4Q3MAK' },
+    10006: { name: 'Introduction to International Relations', short: '국제관계론', ko: '국제관계론 입문', teacher: 'VYAS Utpal', room: 'FⅡ122', term: 'SEM', sid: 'a0ZQ8000004S4ZAMA0' },
   },
 
   // [요일 1=월 … 5=금, 교시, Class code]
   slots: [
-    // 예) [2, 1, 10048],
+    [1, 1, 10116], [1, 2, 10116], [1, 3, 13130],
+    [2, 1, 10048], [2, 2, 11477], [2, 3, 13130],
+    [3, 1, 11357],
+    [4, 2, 11452], [4, 3, 13130],
+    [5, 3, 13130], [5, 4, 10056], [5, 6, 10006],
   ],
 
   // 학사력 (AY2026 Academic Calendar)
