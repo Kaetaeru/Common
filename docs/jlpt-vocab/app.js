@@ -44,6 +44,7 @@ function show(id) {
 
 function renderHome() {
   refreshDay();
+  recomputeQuota();             // 훑어보기 중 앱을 닫아도 할당량이 맞도록
   const st = db.settings;
   const left = parseDay(st.exam) - today;
   $('dday').textContent = left > 0 ? `N1까지 D-${left}` : left === 0 ? 'N1 시험 당일' : 'N1 시험 끝';
@@ -132,9 +133,8 @@ function undoSkim() {
   renderSkim();
 }
 
-// 새로 분류된 신규를 반영해 오늘 할당량을 다시 계산한다
+// 할당량은 renderHome이 다시 계산한다
 function leaveSkim() {
-  recomputeQuota();
   show('home');
 }
 
@@ -307,9 +307,11 @@ function wire() {
   $('exportBtn').onclick = exportBackup;
   $('importInput').onchange = importBackup;
 
-  // 홈 화면 앱을 다음 날 다시 열었을 때 날짜를 갱신한다
+  // 앱을 다시 열었을 때 날짜가 바뀌었으면 어느 화면이든 홈으로, 아니면 홈만 갱신
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && !$('home').hidden) renderHome();
+    if (document.hidden) return;
+    if (dayNum(new Date()) !== today) show('home');
+    else if (!$('home').hidden) renderHome();
   });
 }
 
