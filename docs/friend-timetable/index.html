@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>친구 시간표</title>
+<meta name="description" content="APU 가을학기 친구 시간표. 오늘 수업, 다음 수업, 강의실을 한눈에 봅니다.">
+<meta name="theme-color" content="#f4f6f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1512" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="시간표">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="top-row">
+      <p class="eyebrow" id="termLabel"></p>
+      <button class="today-btn" id="goToday" type="button" hidden>오늘로</button>
+    </div>
+    <div class="date-row">
+      <button class="nav" id="prevDay" type="button" aria-label="이전 날">‹</button>
+      <h1 id="dateTitle"></h1>
+      <button class="nav" id="nextDay" type="button" aria-label="다음 날">›</button>
+    </div>
+    <div class="strip" id="strip" role="tablist" aria-label="이번 주"></div>
+  </header>
+
+  <main id="main">
+    <!-- 하루 -->
+    <section class="view" id="view-day">
+      <div class="status" id="status" hidden></div>
+      <div class="jasso" id="jasso" hidden></div>
+      <div class="notice" id="notice" hidden></div>
+      <ol class="list" id="list"></ol>
+      <label class="jump">
+        <span>다른 날짜 보기</span>
+        <input type="date" id="jumpDate" min="2026-09-28" max="2027-02-28">
+      </label>
+    </section>
+
+    <!-- 주간 -->
+    <section class="view" id="view-week" hidden>
+      <div class="grid-wrap"><table class="grid" id="grid"></table></div>
+      <p class="jasso-week" id="jassoWeek" hidden></p>
+      <p class="hint">칸을 누르면 그날 시간표로 이동합니다.</p>
+    </section>
+
+    <!-- 과목 -->
+    <section class="view" id="view-courses" hidden>
+      <ul class="courses" id="courses"></ul>
+      <p class="hint">강의실은 공식 timetable(2026-09-28 업데이트) 기준입니다. 강의실 변경은 Student Portal 공지를 확인하세요.</p>
+    </section>
+  </main>
+
+  <nav class="tabbar" role="tablist">
+    <button class="tab is-on" data-view="day" type="button" role="tab" aria-selected="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M4 10h16"/><circle cx="12" cy="15" r="1.6" class="fill"/></svg>
+      <span>하루</span>
+    </button>
+    <button class="tab" data-view="week" type="button" role="tab" aria-selected="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M9 9.5v10M15 9.5v10"/></svg>
+      <span>주간</span>
+    </button>
+    <button class="tab" data-view="courses" type="button" role="tab" aria-selected="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h10.5a3 3 0 0 1 3 3V19.5H8a3 3 0 0 1-3-3z"/><path d="M5 16.5a3 3 0 0 1 3-3h10.5"/></svg>
+      <span>과목</span>
+    </button>
+  </nav>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
