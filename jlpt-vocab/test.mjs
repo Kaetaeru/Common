@@ -4,6 +4,7 @@ import {
   MAX_IVL, AGAIN, HARD, GOOD, dayNum, parseDay, isoDay, newState, knownState,
   grade, newPerDay, quota, rollDay, buildQueue,
 } from '../docs/jlpt-vocab/sched.js';
+import { DEFAULT_SETTINGS, toBackup, fromBackup } from '../docs/jlpt-vocab/store.js';
 
 // 날짜: 새벽 4시 전은 전날
 assert.equal(dayNum(new Date(2026, 9, 6, 3, 59)), parseDay('2026-10-05'));
@@ -46,5 +47,18 @@ const progress = {
 };
 assert.deepEqual(buildQueue(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'x'], progress, T, 2), ['e', 'b', 'a', 'd']);
 assert.deepEqual(buildQueue(['a', 'b'], progress, T, 0), ['b']);
+
+// 백업: 왕복, 깨진 JSON, 다른 앱 파일, 잘못된 progress, 잘못된 시험일
+const db = { progress: { 'a|あ': ['review', 5, 3, 2.5, 0] }, edits: { 'a|あ': '뜻' }, settings: { ...DEFAULT_SETTINGS, buffer: 5 } };
+assert.deepEqual(fromBackup(toBackup(db)), db);
+assert.equal(fromBackup('{not json'), null);
+assert.equal(fromBackup(JSON.stringify({ app: 'workout-timer', v: 1 })), null);
+const bad = (patch) => fromBackup(JSON.stringify({ ...JSON.parse(toBackup(db)), ...patch }));
+assert.equal(bad({ progress: { k: ['review', 1, 1] } }), null);
+assert.equal(bad({ progress: { k: ['oops', 1, 1, 2.5, 0] } }), null);
+assert.equal(bad({ progress: [] }), null);
+assert.equal(bad({ settings: { exam: '12/06' } }), null);
+// 예전 백업에 없는 설정 키는 기본값으로 채운다
+assert.deepEqual(bad({ settings: { exam: '2026-12-06' } }).settings, DEFAULT_SETTINGS);
 
 console.log('ok');
