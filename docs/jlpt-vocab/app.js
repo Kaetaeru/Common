@@ -60,7 +60,7 @@ function renderHome() {
   }
   const hasProgress = states().length > 0;
   if (hasProgress && (st.lastBackup === null || today - st.lastBackup > BACKUP_NAG_DAYS)) {
-    notes.push('백업한 지 7일이 지났습니다. 설정에서 내보내 주세요.');
+    notes.push(st.lastBackup === null ? '아직 백업하지 않았습니다. 설정에서 내보내 주세요.' : '백업한 지 7일이 지났습니다. 설정에서 내보내 주세요.');
   }
   $('warn').textContent = notes.join(' ');
   $('warn').hidden = notes.length === 0;
@@ -79,6 +79,7 @@ function renderHome() {
 
 let skimIdx = -1;
 let skimLast = null;            // 되돌리기용 직전 키
+let skimTimer = 0;              // 모른다 답 보여주기 타이머
 let skimBusy = false;           // 모른다 답을 보여주는 1초 동안 입력 무시
 
 function nextSkimIndex(from = 0) {
@@ -96,6 +97,8 @@ function skimProgress() {
 }
 
 function startSkim() {
+  clearTimeout(skimTimer);
+  skimBusy = false;
   skimIdx = nextSkimIndex();
   skimLast = null;
   show('skim');
@@ -121,7 +124,7 @@ function skim(known) {
   if (known) { next(); return; }
   skimBusy = true;
   $('skimBack').textContent = answerText(w);
-  setTimeout(next, 1000);
+  skimTimer = setTimeout(next, 1000);
 }
 
 function undoSkim() {
@@ -235,7 +238,7 @@ function renderSettings() {
 function changeSettings() {
   const exam = $('examInput').value;
   const buffer = Number($('bufferInput').value);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(exam) || !Number.isInteger(buffer) || buffer < 0) { renderSettings(); return; }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(exam) || $('bufferInput').value === '' || !Number.isInteger(buffer) || buffer < 0 || buffer > 30) { renderSettings(); return; }
   db.settings.exam = exam;
   db.settings.buffer = buffer;
   recomputeQuota();

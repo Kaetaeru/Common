@@ -7,6 +7,7 @@
     python jlpt-vocab/build_words.py --offline  source/*.csv 재사용
 """
 import csv
+import html
 import io
 import json
 import sys
@@ -38,7 +39,7 @@ def base_words(offline):
             if f'{k}|{r}' in seen:
                 continue
             seen.add(f'{k}|{r}')
-            words.append({'k': k, 'r': r, 'en': row['meaning'].strip(), 'lv': lv})
+            words.append({'k': k, 'r': r, 'en': ' '.join(html.unescape(row['meaning']).replace(' ', ' ').split()), 'lv': lv})
     return words
 
 
