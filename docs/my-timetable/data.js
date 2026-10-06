@@ -31,7 +31,7 @@ window.TT = {
     10048: { name: 'Japanese History', short: '일본사', ko: '일본의 역사', teacher: '蓮田 隆志', room: 'F201', term: 'SEM', sid: 'a0ZQ8000004S4MQMA0' },
     11477: { name: 'Diverse Perspectives on Understanding Careers', short: '커리어 관점', ko: '커리어 형성을 위한 다양한 관점', teacher: '金井 秀介', room: 'F105', term: 'SEM', sid: 'a0ZQ8000004S4a2MAC' },
     11363: { name: 'Multicultural Cooperative Workshop', short: '다문화 워크숍', ko: '다문화 협동 워크숍', teacher: '王 楚君', room: 'FⅡ220', term: 'SEM', sid: 'a0ZQ8000004S4Q0MAK' },
-    11452: { name: 'Foundation for Global Leadership', short: '글로벌 리더십', ko: '글로벌 리더십의 기초', teacher: '三好 登', room: 'T.B.A.', term: 'SEM', sid: 'a0ZQ8000004S4a1MAC' },
+    11452: { name: 'Foundation for Global Leadership', short: '글로벌 리더십', ko: '글로벌 리더십의 기초', teacher: '三好 登', room: 'J202', term: 'SEM', sid: 'a0ZQ8000004S4a1MAC' },
     10121: { name: 'Psychology', short: '심리학', ko: '심리학', teacher: '横田 文彦', room: 'F204', term: 'SEM', sid: 'a0ZQ8000004S4L9MAK' },
     13192: { name: 'Advanced Japanese', short: '일본어 상급', ko: '일본어 상급', teacher: '井上 佳子', room: 'FⅡ230', term: 'SEM', sid: 'a0ZQ8000005yEaSMAU' },
     10056: { name: 'Languages of the Asia Pacific', short: '아태 언어', ko: '아시아 태평양의 언어', teacher: 'BLACKWELL James', room: 'FⅡ221', term: 'SEM', sid: 'a0ZQ8000004S4Q3MAK' },
