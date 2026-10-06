@@ -40,8 +40,9 @@ export function fromBackup(text) {
   if (!isObj(o) || o.app !== 'jlpt-vocab' || o.v !== 1) return null;
   if (!isObj(o.progress) || !isObj(o.edits) || !isObj(o.settings)) return null;
   for (const s of Object.values(o.progress)) {
-    if (!Array.isArray(s) || s.length !== 5 || !STATES.includes(s[0])) return null;
+    if (!Array.isArray(s) || s.length !== 5 || !STATES.includes(s[0]) || !s.slice(1).every(Number.isFinite)) return null;
   }
+  if (!Object.values(o.edits).every((v) => typeof v === 'string')) return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(o.settings.exam ?? '')) return null;
   return { progress: o.progress, edits: o.edits, settings: { ...DEFAULT_SETTINGS, ...o.settings } };
 }

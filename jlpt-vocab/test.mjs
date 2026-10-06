@@ -60,5 +60,9 @@ assert.equal(bad({ progress: [] }), null);
 assert.equal(bad({ settings: { exam: '12/06' } }), null);
 // 예전 백업에 없는 설정 키는 기본값으로 채운다
 assert.deepEqual(bad({ settings: { exam: '2026-12-06' } }).settings, DEFAULT_SETTINGS);
+// progress 필드는 [상태, 숫자, 숫자, 숫자, 숫자]만 허용
+assert.equal(bad({ progress: { k: ['review', 'x', 1, 2.5, 0] } }), null);
+// edits 값은 문자열만 허용
+assert.equal(bad({ edits: { k: 3 } }), null);
 
 console.log('ok');
