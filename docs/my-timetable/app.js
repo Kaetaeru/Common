@@ -33,7 +33,12 @@
     if (inRange(s, C.q1Exam)) return { kind: 'exam', note: '1쿼터 기말시험 기간입니다. 시험 시간과 장소는 수업별 공지를 확인하세요.', slots: [] };
     if (inRange(s, C.q2Exam)) return { kind: 'exam', note: '2쿼터 기말시험 기간입니다. 시험 시간과 장소는 수업별 공지를 확인하세요.', slots: [] };
     if (s > C.q2Exam[1]) return { kind: 'end', note: '가을학기가 끝났습니다.', slots: [] };
-    if (C.makeupDays.includes(s)) return { kind: 'makeup', note: '보강일입니다. 보강 공지가 있는 수업만 열리고, 3교시부터 시간이 달라요 (3교시 13:05 시작).', slots: [] };
+    if (C.makeupDays.includes(s)) {
+      const shifted = Object.keys(T.makeupPeriods)
+        .filter((p) => T.makeupPeriods[p][0] !== T.periods[p][0])
+        .map((p) => `${p}교시 ${T.makeupPeriods[p].join('–')}`).join(' · ');
+      return { kind: 'makeup', note: `보강일입니다. 보강 공지가 있는 수업만 열려요. 보강일 시간: ${shifted}`, slots: [] };
+    }
     if (wd === 0 || wd === 6) return { kind: 'weekend', note: '', slots: [] };
     const q = inRange(s, C.q1) ? 1 : inRange(s, C.q2) ? 2 : 0;
     if (!q) return { kind: 'gap', note: '쿼터 사이라 정규 수업이 없습니다.', slots: [] };
@@ -42,20 +47,27 @@
       .sort((a, b) => a[1] - b[1]);
     let note = '';
     if (C.holidaysWithClass[s]) note = `${C.holidaysWithClass[s]}(공휴일)이지만 정상 수업일이에요.`;
-    else if (q === 2 && T.slots.some(([d, , c]) => d === wd && T.courses[c].term === 'Q1')) note = '2쿼터부터는 1쿼터 과목(Negotiation Skills)이 빠집니다.';
+    else if (q === 2 && s < addDays(C.q2[0], 7)) {
+      // 2쿼터 첫 주에만, 그 요일에서 빠지는 1쿼터 과목을 알려 준다
+      const gone = [...new Set(T.slots.filter(([d, , c]) => d === wd && T.courses[c].term === 'Q1').map(([, , c]) => T.courses[c].name))];
+      if (gone.length) note = `2쿼터부터는 1쿼터 과목(${gone.join(', ')})이 빠집니다.`;
+    }
     return { kind: 'class', q, note, slots };
   }
 
   function termLabel(s) {
     if (s < C.q1[0]) return `${T.term} · 개강 전`;
     if (s <= C.q1[1]) return `${T.term} · 1쿼터 ${Math.floor(diffDays(C.q1[0], s) / 7) + 1}주차`;
+    if (s < C.q1Exam[0]) return `${T.term} · 1쿼터 시험 전`;
     if (s <= C.q1Exam[1]) return `${T.term} · 1쿼터 시험 기간`;
     if (s < C.q2[0]) return `${T.term} · 쿼터 사이`;
     if (inRange(s, C.q2Exam)) return `${T.term} · 2쿼터 시험 기간`;
     const brk = C.breaks.find((b) => inRange(s, b));
     if (brk) return `${T.term} · ${brk[2]}`;
     if (s <= C.q2Exam[1]) {
-      const w = Math.floor(diffDays(C.q2[0], s) / 7) + 1;
+      // 방학 기간은 주차에서 뺀다
+      const off = C.breaks.filter((b) => b[0] >= C.q2[0] && b[1] < s).reduce((n, b) => n + diffDays(b[0], b[1]) + 1, 0);
+      const w = Math.floor((diffDays(C.q2[0], s) - off) / 7) + 1;
       return `${T.term} · 2쿼터 ${w}주차`;
     }
     return `${T.term} · 종료`;
@@ -241,7 +253,7 @@
       const c = T.courses[code];
       const meets = T.slots.filter((s) => s[2] === code).map(([d, p]) => `<span>${WD[d]} ${p}교시 · ${T.periods[p][0]}</span>`).join('');
       return `<li class="card">
-        <div class="card-top"><div class="cname">${c.name}<span class="tag">${c.term === 'Q1' ? '1쿼터' : '학기'}</span><small>${c.ko}</small></div><span class="room">${PIN}${c.room}</span></div>
+        <div class="card-top"><div class="cname">${c.name}<span class="tag">${{ Q1: '1쿼터', Q2: '2쿼터' }[c.term] || '학기'}</span><small>${c.ko}</small></div><span class="room">${PIN}${c.room}</span></div>
         <div class="meet">${meets}</div>
         <div class="cmeta"><span>${c.teacher}</span><a href="${syllabus(code)}" target="_blank" rel="noopener">#${code} 실라버스</a></div>
       </li>`;
