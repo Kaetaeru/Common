@@ -19,7 +19,11 @@ function persist(...keys) {
 }
 
 const states = () => Object.values(db.progress);
-const countNew = () => states().filter((s) => s[0] === 'new').length;
+// 아직 안 배운 단어: 훑어보기 전 단어와 '모른다'로 분류한 단어
+const countNew = () => words.filter((w) => {
+  const s = db.progress[keyOf(w)];
+  return !s || s[0] === 'new';
+}).length;
 const meaning = (w) => db.edits[keyOf(w)] ?? w.ko;
 const answerText = (w) => (w.k === w.r ? meaning(w) : `${w.r} · ${meaning(w)}`);
 
@@ -68,10 +72,8 @@ function renderHome() {
   const p = skimProgress();
   $('startSkim').hidden = !p;
   if (p) {
-    $('startSkim').className = 'accent';
-    $('startSkim').textContent = hasProgress
-      ? `훑어보기 계속 (N${p.lv} ${p.done}/${p.size})`
-      : `훑어보기 시작 (N${p.lv} ${p.size}개)`;
+    // 선택 사항: 아는 단어를 미리 빼면 하루 분량이 줄어든다
+    $('startSkim').textContent = `훑어보기로 아는 단어 빼기 (N${p.lv} ${p.done}/${p.size})`;
   }
 }
 
@@ -161,6 +163,7 @@ function nextCard() {
   revealed = false;
   $('studyBack').hidden = true;
   $('gradeRow').hidden = true;
+  $('knownBtn').hidden = true;
   $('tapHint').hidden = false;
   if (!cur) {
     $('studyFront').textContent = '오늘 끝';
@@ -175,6 +178,16 @@ function nextCard() {
   $('studyEn').textContent = w.en;
   $('tapHint').textContent = '탭해서 답 보기';
   $('studyCount').textContent = `남은 ${queue.length + 1}`;
+  const s = db.progress[cur.key];
+  $('knownBtn').hidden = cur.again || (s && s[0] !== 'new');
+}
+
+// 신규 카드를 이미 아는 경우: 평가 없이 학습에서 뺀다
+function markKnown() {
+  if (!cur || cur.again) return;
+  db.progress[cur.key] = knownState();
+  persist('progress');
+  nextCard();
 }
 
 function reveal() {
@@ -190,7 +203,7 @@ function answer(g) {
   if (!cur || !revealed) return;
   const { key, again } = cur;
   if (!again) {                  // 첫 평가만 저장한다
-    const was = db.progress[key];
+    const was = db.progress[key] ?? newState();   // 훑어보기 전 단어
     if (was[0] === 'new') db.settings.newDoneToday += 1;
     db.progress[key] = grade(was, g, today);
     persist('progress', 'settings');
@@ -221,7 +234,7 @@ function renderSettings() {
     ['전체 단어', words.length],
     ['훑어보기 안 함', words.length - seen],
     ['제외 (안다)', n('known')],
-    ['신규 대기', n('new')],
+    ['아직 안 배운 단어', countNew()],
     ['학습 중', n('review')],
     ['오늘 신규 할당', st.quotaToday],
     ['마지막 백업', st.lastBackup === null ? '없음' : isoDay(st.lastBackup)],
@@ -303,6 +316,7 @@ function wire() {
 
   $('studyCard').onclick = reveal;
   $('editKo').onclick = editKo;
+  $('knownBtn').onclick = markKnown;
   for (const b of $('gradeRow').children) b.onclick = () => answer(Number(b.dataset.g));
 
   $('examInput').onchange = changeSettings;

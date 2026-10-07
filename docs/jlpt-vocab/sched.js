@@ -51,10 +51,9 @@ export function rollDay(settings, today, remainingNew) {
 export function buildQueue(keys, progress, today, newCount) {
   const due = [], fresh = [];
   for (const k of keys) {
-    const s = progress[k];
-    if (!s) continue;
-    if (s[0] === 'review' && s[1] <= today) due.push(k);
-    else if (s[0] === 'new' && fresh.length < newCount) fresh.push(k);
+    const s = progress[k];        // 없으면 훑어보기 전 단어 — 신규로 친다
+    if (s?.[0] === 'review' && s[1] <= today) due.push(k);
+    else if ((!s || s[0] === 'new') && fresh.length < newCount) fresh.push(k);
   }
   due.sort((a, b) => progress[a][1] - progress[b][1]);
   return due.concat(fresh);

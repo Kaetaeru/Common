@@ -47,6 +47,9 @@ const progress = {
 };
 assert.deepEqual(buildQueue(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'x'], progress, T, 2), ['e', 'b', 'a', 'd']);
 assert.deepEqual(buildQueue(['a', 'b'], progress, T, 0), ['b']);
+// 훑어보기 안 한 단어(progress에 없음)도 신규로 나온다
+assert.deepEqual(buildQueue(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'x'], progress, T, 4), ['e', 'b', 'a', 'd', 'g', 'x']);
+assert.deepEqual(buildQueue(['x', 'a'], progress, T, 1), ['x']);
 
 // 백업: 왕복, 깨진 JSON, 다른 앱 파일, 잘못된 progress, 잘못된 시험일
 const db = { progress: { 'a|あ': ['review', 5, 3, 2.5, 0] }, edits: { 'a|あ': '뜻' }, settings: { ...DEFAULT_SETTINGS, buffer: 5 } };
