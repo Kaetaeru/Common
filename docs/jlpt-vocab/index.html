@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="N1 단어">
+<meta name="theme-color" content="#14213d">
+<title>N1 단어</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <section id="home">
+    <p class="dday" id="dday"></p>
+    <p class="today" id="todayLine">불러오는 중…</p>
+    <p class="warn" id="warn" hidden></p>
+    <button class="primary" id="startStudy" disabled>학습 시작</button>
+    <button id="startSkim" hidden></button>
+    <button class="link" id="openSettings">설정·통계</button>
+  </section>
+
+  <section id="skim" hidden>
+    <header><button class="link" data-home>‹ 홈</button><span id="skimCount"></span></header>
+    <div class="card" id="skimCard">
+      <div class="front" id="skimFront"></div>
+      <div class="answer" id="skimBack"></div>
+    </div>
+    <div class="row"><button id="skimNo">모른다</button><button id="skimYes">안다</button></div>
+    <button class="link" id="skimUndo" disabled>되돌리기</button>
+  </section>
+
+  <section id="study" hidden>
+    <header><button class="link" data-home>‹ 홈</button><span id="studyCount"></span></header>
+    <div class="card" id="studyCard">
+      <div class="front" id="studyFront"></div>
+      <div class="back" id="studyBack" hidden>
+        <div class="reading" id="studyReading"></div>
+        <div class="ko" id="studyKo"></div>
+        <div class="en" id="studyEn"></div>
+        <button class="link" id="editKo">✎ 뜻 고치기</button>
+      </div>
+      <p class="hint" id="tapHint">탭해서 답 보기</p>
+    </div>
+    <button class="link" id="knownBtn" hidden>이미 앎 — 학습에서 빼기</button>
+    <div class="row grades" id="gradeRow" hidden>
+      <button data-g="0">모름</button><button data-g="1">애매</button><button data-g="2">앎</button>
+    </div>
+  </section>
+
+  <section id="settings" hidden>
+    <header><button class="link" data-home>‹ 홈</button><span>설정·통계</span></header>
+    <dl id="stats"></dl>
+    <label>시험일 <input type="date" id="examInput"></label>
+    <label>복습만 하는 마지막 날 수 <input type="number" id="bufferInput" min="0" max="30" inputmode="numeric"></label>
+    <button id="exportBtn">백업 내보내기</button>
+    <label class="button">가져오기<input type="file" id="importInput" accept="application/json,.json" hidden></label>
+  </section>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>
