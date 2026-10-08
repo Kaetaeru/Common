@@ -10,8 +10,10 @@ import csv
 import html
 import io
 import json
+import re
 import sys
 import urllib.request
+from collections import Counter
 from pathlib import Path
 
 HERE = Path(__file__).parent
@@ -43,6 +45,27 @@ def base_words(offline):
     return words
 
 
+KANJI = re.compile(r'[一-鿿]')
+
+
+def kanji_order(words):
+    """같은 한자 단어끼리 붙여 놓는다.
+
+    단어마다 다른 단어와 공유하는 한자 중 가장 드문 것을 기준으로 묶는다(出·気처럼
+    흔한 한자로 묶으면 묶음이 수십 개가 된다). 묶음은 N2 단어가 있는 것부터,
+    그다음 원래 순서대로. 묶음 안은 N2 → N1. 공유 한자가 없는 단어는 혼자 한 묶음.
+    """
+    chars = [list(dict.fromkeys(KANJI.findall(w['k']))) for w in words]
+    freq = Counter(c for cs in chars for c in cs)
+    groups = {}
+    for i, cs in enumerate(chars):
+        shared = [c for c in cs if freq[c] > 1]
+        anchor = min(shared, key=lambda c: (freq[c], cs.index(c))) if shared else i
+        groups.setdefault(anchor, []).append(i)
+    ordered = sorted(groups.values(), key=lambda g: (min(words[i]['lv'] for i in g) != 2, g[0]))
+    return [words[i] for g in ordered for i in sorted(g, key=lambda i: (words[i]['lv'] != 2, i))]
+
+
 def main():
     words = base_words('--offline' in sys.argv)
     assert len(words) > 4000, f'단어 수가 이상하다: {len(words)}'
@@ -62,7 +85,8 @@ def main():
         return 1
 
     out = [{'k': w['k'], 'r': w['r'], 'ko': ko[f"{w['k']}|{w['r']}"].strip(), 'en': w['en'], 'lv': w['lv']}
-           for w in words]
+           for w in kanji_order(words)]
+    assert sorted(f"{w['k']}|{w['r']}" for w in out) == sorted(keys), '정렬 중 단어가 빠지거나 겹쳤다'
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     print('썼다:', OUT)
