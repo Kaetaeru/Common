@@ -34,7 +34,7 @@ JLPT N2·N1 단어 4,447개를 간격 반복으로 외우는 개인용 단어장
 python jlpt-vocab/build_words.py --offline
 ```
 
-`jlpt-vocab/ko/*.json`의 뜻을 고친 뒤 실행하면 `docs/jlpt-vocab/words.json`을 다시 씁니다. 그다음 `sw.js`의 `CACHE` 값(`jlpt-vocab-v1`)의 숫자를 올려 주세요.
+`jlpt-vocab/ko/*.json`의 뜻을 고친 뒤 실행하면 `docs/jlpt-vocab/words.json`을 다시 씁니다. 그다음 `sw.js`의 `CACHE` 값(`jlpt-vocab-v2`)의 숫자를 올려 주세요.
 
 ## 구조
 

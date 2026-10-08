@@ -9,8 +9,12 @@ const AGAIN_GAP = 5;            // 모름 카드는 5장 뒤에 다시 나온다
 const WARN_NEW_PER_DAY = 60;
 const BACKUP_NAG_DAYS = 7;
 
-let words = [];                 // words.json 그대로 (N2 → N1 순서)
+const KANJI = /[一-鿿]/g;
+const RELATED_MAX = 3;
+
+let words = [];                 // words.json 그대로 (같은 한자 묶음, N2 묶음 먼저)
 let byKey = new Map();
+let byKanji = new Map();        // 한자 → 그 한자가 든 단어들
 let db = load();
 let today = dayNum(new Date());
 
@@ -73,7 +77,7 @@ function renderHome() {
   $('startSkim').hidden = !p;
   if (p) {
     // 선택 사항: 아는 단어를 미리 빼면 하루 분량이 줄어든다
-    $('startSkim').textContent = `훑어보기로 아는 단어 빼기 (N${p.lv} ${p.done}/${p.size})`;
+    $('startSkim').textContent = `훑어보기로 아는 단어 빼기 (${p.done}/${p.size})`;
   }
 }
 
@@ -89,13 +93,10 @@ function nextSkimIndex(from = 0) {
   return -1;
 }
 
-// 지금 훑어보는 레벨의 진행 상황. 다 끝났으면 null
+// 훑어보기 진행 상황(전체 단어 기준). 다 끝났으면 null
 function skimProgress() {
-  const i = nextSkimIndex();
-  if (i < 0) return null;
-  const lv = words[i].lv;
-  const inLv = words.filter((w) => w.lv === lv);
-  return { lv, size: inLv.length, done: inLv.filter((w) => db.progress[keyOf(w)]).length };
+  if (nextSkimIndex() < 0) return null;
+  return { size: words.length, done: words.filter((w) => db.progress[keyOf(w)]).length };
 }
 
 function startSkim() {
@@ -112,7 +113,7 @@ function renderSkim() {
   $('skimFront').textContent = words[skimIdx].k;
   $('skimBack').textContent = '';
   const p = skimProgress();
-  $('skimCount').textContent = `N${p.lv} ${p.done}/${p.size}`;
+  $('skimCount').textContent = `${p.done}/${p.size}`;
   $('skimUndo').disabled = !skimLast;
 }
 
@@ -176,10 +177,25 @@ function nextCard() {
   $('studyReading').textContent = w.k === w.r ? '' : w.r;
   $('studyKo').textContent = meaning(w);
   $('studyEn').textContent = w.en;
+  $('studyRelated').textContent = related(w);
   $('tapHint').textContent = '탭해서 답 보기';
   $('studyCount').textContent = `남은 ${queue.length + 1}`;
   const s = db.progress[cur.key];
   $('knownBtn').hidden = cur.again || (s && s[0] !== 'new');
+}
+
+// 같은 한자를 쓰는, 이미 배웠거나 아는 단어. 드문 한자부터 최대 3개
+function related(w) {
+  const chars = [...new Set(w.k.match(KANJI) ?? [])]
+    .sort((a, b) => byKanji.get(a).length - byKanji.get(b).length);
+  const out = [];
+  for (const c of chars) {
+    for (const o of byKanji.get(c)) {
+      const st = db.progress[keyOf(o)]?.[0];
+      if (out.length < RELATED_MAX && o !== w && !out.includes(o) && (st === 'review' || st === 'known')) out.push(o);
+    }
+  }
+  return out.length ? `같은 한자: ${out.map((o) => `${o.k} ${meaning(o)}`).join(' · ')}` : '';
 }
 
 // 신규 카드를 이미 아는 경우: 평가 없이 학습에서 뺀다
@@ -342,6 +358,12 @@ async function init() {
     return;
   }
   byKey = new Map(words.map((w) => [keyOf(w), w]));
+  for (const w of words) {
+    for (const c of new Set(w.k.match(KANJI) ?? [])) {
+      if (!byKanji.has(c)) byKanji.set(c, []);
+      byKanji.get(c).push(w);
+    }
+  }
   wire();
   show('home');
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
