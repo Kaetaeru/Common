@@ -7,6 +7,7 @@ const $ = (id) => document.getElementById(id);
 const keyOf = (w) => `${w.k}|${w.r}`;
 const AGAIN_GAP = 5;            // 모름 카드는 5장 뒤에 다시 나온다
 const WARN_NEW_PER_DAY = 60;
+const EXTRA_NEW = 10;           // 오늘 분량을 끝낸 뒤 [더 하기] 한 번에 나오는 신규 수
 const BACKUP_NAG_DAYS = 7;
 
 const KANJI = /[一-鿿]/g;
@@ -61,6 +62,8 @@ function renderHome() {
   const newLeft = Math.min(Math.max(0, st.quotaToday - st.newDoneToday), countNew());
   $('todayLine').textContent = `오늘 복습 ${due} · 신규 ${newLeft}`;
   $('startStudy').disabled = due + newLeft === 0;
+  $('moreStudy').hidden = due + newLeft > 0 || countNew() === 0;
+  $('moreStudy').textContent = `새 단어 ${EXTRA_NEW}개 더 하기`;
 
   const notes = [];
   if (st.quotaToday > WARN_NEW_PER_DAY) {
@@ -150,10 +153,12 @@ let queue = [];                 // { key, again } — again이면 이미 저장�
 let cur = null;
 let revealed = false;
 
-function startStudy() {
+// extra: 할당량을 다 채운 뒤 더 하는 신규 수. 오늘 한 만큼 남은 날 할당량이 줄어든다
+function startStudy(extra = 0) {
   refreshDay();
   const st = db.settings;
-  const keys = buildQueue([...byKey.keys()], db.progress, today, Math.max(0, st.quotaToday - st.newDoneToday));
+  const newCount = Math.max(0, st.quotaToday - st.newDoneToday) + extra;
+  const keys = buildQueue([...byKey.keys()], db.progress, today, newCount);
   queue = keys.map((key) => ({ key, again: false }));
   show('study');
   nextCard();
@@ -314,7 +319,8 @@ function wire() {
   for (const b of document.querySelectorAll('[data-home]')) {
     b.addEventListener('click', () => ($('skim').hidden ? show('home') : leaveSkim()));
   }
-  $('startStudy').onclick = startStudy;
+  $('startStudy').onclick = () => startStudy();
+  $('moreStudy').onclick = () => startStudy(EXTRA_NEW);
   $('startSkim').onclick = startSkim;
   $('openSettings').onclick = () => show('settings');
 
