@@ -61,6 +61,7 @@
     if (s < C.q1Exam[0]) return `${T.term} · 1쿼터 시험 전`;
     if (s <= C.q1Exam[1]) return `${T.term} · 1쿼터 시험 기간`;
     if (s < C.q2[0]) return `${T.term} · 쿼터 사이`;
+    if (s > C.q2[1] && s < C.q2Exam[0]) return `${T.term} · 2쿼터 시험 전`;
     if (inRange(s, C.q2Exam)) return `${T.term} · 2쿼터 시험 기간`;
     const brk = C.breaks.find((b) => inRange(s, b));
     if (brk) return `${T.term} · ${brk[2]}`;
@@ -171,7 +172,7 @@
     if (!w) { box.hidden = true; return; }
     const today = nowJST().date;
     const when = sel === w.end ? '이날 마감' : `마감 ${short(w.end)}`;
-    const dday = sel === today ? ` · D-${diffDays(today, w.end)}` : '';
+    const dday = sel === today && sel !== w.end ? ` · D-${diffDays(today, w.end)}` : '';
     box.hidden = false;
     box.innerHTML = `<span class="tagj">JASSO</span><div class="txt">
       <span class="lbl">장학금 신청 가능 · ${w.name}</span>
