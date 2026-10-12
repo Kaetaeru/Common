@@ -200,3 +200,15 @@ h1 { margin: 0; text-align: center; font-size: 22px; font-weight: 700; letter-sp
 .grid th.has-jasso { color: var(--jasso); box-shadow: inset 0 -3px 0 var(--jasso); }
 .jasso-week { margin: 10px 2px 0; font-size: 13px; color: var(--muted); line-height: 1.6; }
 .jasso-week b { color: var(--jasso); font-weight: 800; letter-spacing: .04em; }
+
+/* ---------- 기타 일정 (본인선택원 등) ---------- */
+.event { display: flex; gap: 12px; align-items: flex-start; background: var(--now-soft); border: 1px solid var(--now); border-radius: 12px; padding: 10px 14px; }
+.event .tage { flex: none; font-size: 11px; font-weight: 800; color: var(--bg); background: var(--now); border-radius: 6px; padding: 3px 7px; margin-top: 2px; }
+.event .txt { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.event .lbl { font-weight: 650; font-size: 15px; color: var(--now); }
+.event .meta { font-size: 13px; color: var(--muted); }
+.strip .has-event .dots i { background: var(--now); opacity: 1; }
+.strip .has-event .dots:empty::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--now); }
+.grid th.has-event { color: var(--now); }
+.event-week { margin: 10px 2px 0; font-size: 13px; color: var(--muted); line-height: 1.6; }
+.event-week b { color: var(--now); font-weight: 800; }
