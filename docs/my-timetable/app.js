@@ -89,6 +89,9 @@
     return w ? { start: w[0], end: w[1], pay: w[2], name: w[3] } : null;
   };
 
+  /* ---------- 기타 일정 ---------- */
+  const eventsOn = (s) => (T.events || []).filter(([a, b]) => s >= a && s <= b);
+
   /* ---------- 상태 ---------- */
   let view = 'day';
   let sel = nowJST().date;
@@ -108,8 +111,9 @@
       const info = dayInfo(s);
       const n = info.slots.length;
       const jw = jassoOn(s);
-      const cls = [s === today ? 'is-today' : '', n ? '' : 'is-off', jw ? 'has-jasso' : ''].join(' ');
-      h += `<button type="button" role="tab" class="${cls}" data-date="${s}" aria-selected="${s === sel}" aria-label="${label(s)}, 수업 ${n}개${jw ? ', JASSO 장학금 신청 가능' : ''}">
+      const ev = eventsOn(s);
+      const cls = [s === today ? 'is-today' : '', n ? '' : 'is-off', jw ? 'has-jasso' : '', ev.length ? 'has-event' : ''].join(' ');
+      h += `<button type="button" role="tab" class="${cls}" data-date="${s}" aria-selected="${s === sel}" aria-label="${label(s)}, 수업 ${n}개${jw ? ', JASSO 장학금 신청 가능' : ''}${ev.map((e) => ', ' + e[2]).join('')}">
         <span class="wd">${WD[dow(s)]}</span><span class="dn">${parse(s).getUTCDate()}</span>
         <span class="dots">${'<i></i>'.repeat(Math.min(n, 4))}</span></button>`;
     }
@@ -181,6 +185,9 @@
     $('notice').hidden = !info.note;
     $('notice').textContent = info.note;
     renderJasso();
+    const evs = eventsOn(sel);
+    $('event').hidden = !evs.length;
+    $('event').innerHTML = evs.map(([a, b, name]) => `<span class="tage">일정</span><div class="txt"><span class="lbl">${name}</span><span class="meta">${short(a)} ~ ${short(b)}${sel === b ? ' · 마지막 날' : ''}</span></div>`).join('');
     const list = $('list');
     if (!info.slots.length) {
       const msg = { weekend: '주말이에요', break: '방학이에요', exam: '정규 수업 없음', makeup: '정해진 수업 없음', pre: '아직 개강 전', end: '학기 종료', gap: '정규 수업 없음' }[info.kind] || '수업 없음';
@@ -219,7 +226,7 @@
     const infos = days.map(dayInfo);
     const maxP = Math.max(4, ...T.slots.map((s) => s[1]));
     let h = '<thead><tr><th class="p"></th>';
-    days.forEach((s) => { h += `<th class="${s === today ? 'is-today' : ''}${jassoOn(s) ? ' has-jasso' : ''}">${WD[dow(s)]} ${parse(s).getUTCDate()}</th>`; });
+    days.forEach((s) => { h += `<th class="${s === today ? 'is-today' : ''}${jassoOn(s) ? ' has-jasso' : ''}${eventsOn(s).length ? ' has-event' : ''}">${WD[dow(s)]} ${parse(s).getUTCDate()}</th>`; });
     h += '</tr></thead><tbody>';
     for (let p = 1; p <= maxP; p++) {
       h += `<tr><th class="p"><b>${p}</b>${T.periods[p][0]}</th>`;
@@ -245,6 +252,9 @@
     const jw = $('jassoWeek');
     jw.hidden = !seen.length;
     jw.innerHTML = seen.map((w) => `<b>JASSO</b> ${w.name} 신청 ${short(w.start)} ~ ${short(w.end)}`).join('<br>');
+    const evw = (T.events || []).filter(([a, b]) => a <= addDays(mon, 6) && b >= mon);
+    $('eventWeek').hidden = !evw.length;
+    $('eventWeek').innerHTML = evw.map(([a, b, name]) => `<b>일정</b> ${name} ${short(a)} ~ ${short(b)}`).join('<br>');
   }
 
   function renderCourses() {
