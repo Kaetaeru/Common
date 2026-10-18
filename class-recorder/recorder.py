@@ -20,7 +20,8 @@ def input_devices():
     """기본 호스트 API(보통 MME)의 입력 장치 [(index, name)]. 같은 마이크가 드라이버별로 중복되지 않게."""
     api = sd.default.hostapi
     return [(i, d['name']) for i, d in enumerate(sd.query_devices())
-            if d['max_input_channels'] > 0 and d['hostapi'] == api]
+            if d['max_input_channels'] > 0 and d['hostapi'] == api
+            and 'Mapper' not in d['name'] and '매퍼' not in d['name']]  # 사운드 매퍼 = 'Windows 기본 마이크'와 같다
 
 
 def keep_awake(on):

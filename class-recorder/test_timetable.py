@@ -81,6 +81,26 @@ class TimetableTest(unittest.TestCase):
         self.assertEqual(self.tt.status(jst(2026, 10, 18, 9, 0)), '오늘 수업 없음')
 
 
+class LoadLatestTest(unittest.TestCase):
+    def test_offline_falls_back_to_cache_then_bundled(self):
+        import timetable
+        saved = timetable.DATA_JS, timetable.SITE_DATA_JS, timetable.BUNDLED_DATA_JS
+        real = timetable.DATA_JS
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                timetable.DATA_JS = Path(tmp) / 'no-repo.js'           # exe 처럼 저장소 밖
+                timetable.SITE_DATA_JS = 'http://127.0.0.1:9/data.js'   # 네트워크 실패
+                timetable.BUNDLED_DATA_JS = real
+                cache = Path(tmp) / 'cache.js'
+                tt, src = Timetable.load_latest(cache)
+                self.assertEqual((len(tt.courses), src), (8, 'exe 내장본(오프라인)'))
+                cache.write_text(real.read_text(encoding='utf-8'), encoding='utf-8')
+                tt, src = Timetable.load_latest(cache)
+                self.assertEqual((len(tt.courses), src), (8, '마지막 저장본(오프라인)'))
+        finally:
+            timetable.DATA_JS, timetable.SITE_DATA_JS, timetable.BUNDLED_DATA_JS = saved
+
+
 class NameTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

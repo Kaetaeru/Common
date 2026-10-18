@@ -8,7 +8,15 @@
 
 ## 실행
 
-`run_windows.bat`을 더블클릭합니다. 처음 한 번은 필요한 라이브러리(sounddevice, soundfile, numpy)를 설치합니다. Python 3이 있어야 합니다.
+- **바탕화면의 `수업 녹음기.exe`** 를 더블클릭합니다. Python 없이 실행됩니다.
+- 또는 저장소에서 `run_windows.bat` 더블클릭 (처음 한 번 sounddevice, soundfile, numpy 설치, Python 3 필요).
+
+exe 를 다시 만들려면(코드를 고친 뒤): `python build_exe.py` → 바탕화면 exe 가 새로 바뀝니다.
+
+### 시간표는 어디서 읽나
+
+- 저장소 안에서 실행하면 `docs/my-timetable/data.js`.
+- exe 는 켤 때마다 사이트(`kaetaeru.github.io/Common/my-timetable/data.js`)에서 최신 시간표를 받아 `%LOCALAPPDATA%\class-recorder\data.js`에 저장합니다. 인터넷이 없으면 마지막 저장본, 그것도 없으면 exe 를 만들 때 넣은 사본을 씁니다. 그래서 시간표를 고쳐 머지하면 exe 를 다시 만들 필요가 없습니다.
 
 ## 화면
 
@@ -43,7 +51,8 @@ class-recorder/
 ├── timetable.py        data.js 읽기, 정규 수업일, 회차, 이름 규칙
 ├── recorder.py         마이크 스트림, 음량, MP3 쓰기
 ├── test_timetable.py   timetable.py 테스트: python -m unittest test_timetable -v
-├── run_windows.bat     더블클릭 실행
+├── run_windows.bat     더블클릭 실행 (Python 으로)
+├── build_exe.py        exe 만들기 → 바탕화면에 복사
 ├── requirements.txt
 ├── 2026-10-19-design.md  설계
 └── 2026-10-19-plan.md    구현 계획
