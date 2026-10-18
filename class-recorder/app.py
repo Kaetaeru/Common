@@ -15,6 +15,7 @@ import timetable as tt
 from recorder import Recorder, input_devices, keep_awake
 
 BASE = Path.home() / 'Documents' / '수업 녹음'
+CACHE = Path(os.environ.get('LOCALAPPDATA', Path.home())) / 'class-recorder' / 'data.js'  # 사이트에서 받은 마지막 시간표
 FONT = 'Malgun Gothic'
 METER_W, METER_H = 380, 14
 GREEN, RED, MUTED = '#2e9e5b', '#d64545', '#6b6b6b'
@@ -28,9 +29,12 @@ class App:
     def __init__(self, root):
         self.root = root
         root.title('수업 녹음기')
+        icon = Path(getattr(sys, '_MEIPASS', '')) / 'icon.ico'  # exe 에 넣은 아이콘
+        if icon.is_file():
+            root.iconbitmap(default=str(icon))
         root.resizable(False, False)
         try:
-            self.tt = tt.Timetable.load()
+            self.tt, _ = tt.Timetable.load_latest(CACHE)
             load_error = ''
         except Exception as e:  # 시간표가 없어도 녹음은 된다 (수업 외 이름)
             self.tt = None

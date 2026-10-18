@@ -5,12 +5,16 @@
 """
 import json
 import re
+import sys
+import urllib.request
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 JST = timezone(timedelta(hours=9))
 DATA_JS = Path(__file__).resolve().parent.parent / 'docs' / 'my-timetable' / 'data.js'
+SITE_DATA_JS = 'https://kaetaeru.github.io/Common/my-timetable/data.js'
+BUNDLED_DATA_JS = Path(getattr(sys, '_MEIPASS', '.')) / 'data.js'  # exe 안에 넣은 빌드 당시 사본
 MIN_OVERLAP = 20   # 분. 이만큼 겹친 교시만 그 수업 녹음으로 인정
 PREVIEW_LEAD = 10  # 분. 교시 시작 이만큼 전부터 미리보기에 그 수업 이름
 
@@ -58,6 +62,24 @@ class Timetable:
     @classmethod
     def load(cls, path=DATA_JS):
         return cls(js_to_json(Path(path).read_text(encoding='utf-8')))
+
+    @classmethod
+    def load_latest(cls, cache):
+        """저장소 안이면 저장소의 data.js. 아니면(exe) 사이트의 최신본을 받아 cache 에 저장,
+        못 받으면 마지막 cache, 그것도 없으면 exe 에 넣은 사본. (Timetable, 출처 설명)"""
+        if DATA_JS.exists():
+            return cls.load(DATA_JS), '저장소'
+        try:
+            text = urllib.request.urlopen(SITE_DATA_JS, timeout=3).read().decode('utf-8')
+            tt = cls(js_to_json(text))
+            Path(cache).parent.mkdir(parents=True, exist_ok=True)
+            Path(cache).write_text(text, encoding='utf-8')
+            return tt, '사이트 최신'
+        except Exception:
+            pass
+        if Path(cache).exists():
+            return cls.load(cache), '마지막 저장본(오프라인)'
+        return cls.load(BUNDLED_DATA_JS), 'exe 내장본(오프라인)'
 
     def _in(self, d, rng):
         return rng[0] <= d.isoformat() <= rng[1]
